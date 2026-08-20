@@ -1,9 +1,9 @@
 name: ci
 
-# anymone is a private git dependency, so every job needs its deploy key in an
-# agent before cargo fetches; the public deps reached over ssh:// authenticate
-# with the same key. The anymone revision the mobile crate builds against is
-# pinned in crates/anymone-ffi/Cargo.toml.
+# anymone and adcnet-rs are private, and a deploy key opens only the repository
+# it belongs to, so each needs its own in the agent before cargo fetches. The
+# anymone revision the mobile crate builds against is pinned in
+# crates/anymone-ffi/Cargo.toml.
 on:
   push:
   pull_request:
@@ -30,7 +30,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
+          ssh-private-key: |
+            ${{ secrets.ANYMONE_DEPLOY_KEY }}
+            ${{ secrets.ADCNET_DEPLOY_KEY }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
@@ -63,7 +65,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
+          ssh-private-key: |
+            ${{ secrets.ANYMONE_DEPLOY_KEY }}
+            ${{ secrets.ADCNET_DEPLOY_KEY }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
