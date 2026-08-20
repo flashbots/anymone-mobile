@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = ["crates/anymone-ffi"]
+
+[profile.dev]
+opt-level = 1
+
+# Same overrides as the anymone workspace: at opt-level 0 the crypto is 6-8x
+# slower and the round loops wedge.
+[profile.dev.package.panetiere]
+opt-level = 2
+
+[profile.dev.package.adcnet]
+opt-level = 2
+
+[profile.dev.package.chipmunk_code]
+opt-level = 2
+
+[profile.dev.package.num-bigint]
+opt-level = 2
+
+[profile.release]
+lto = "thin"

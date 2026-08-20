@@ -1,0 +1,101 @@
+name: ci
+
+# anymone is a private git dependency, so every job needs its deploy key in an
+# agent before cargo fetches; the public deps reached over ssh:// authenticate
+# with the same key. The anymone revision the mobile crate builds against is
+# pinned in crates/anymone-ffi/Cargo.toml.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: which platforms to build
+        type: choice
+        default: both
+        options: [both, android, ios]
+      testflight:
+        description: upload a TestFlight build
+        type: boolean
+        default: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  host-and-android:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'ios'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+      - name: Host tests
+        run: cargo test -p anymone-ffi
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r26d
+      - name: Android cross-build
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          cargo install cargo-ndk --locked
+          ./scripts/build-android.sh
+      - name: Gradle build
+        working-directory: android
+        run: gradle --no-daemon assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anymone-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
+  ios:
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'android'
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+      - name: XCFramework + bindings
+        run: ./scripts/build-ios.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AnymoneFFI.xcframework
+          path: ios/AnymoneKit/AnymoneFFI.xcframework
+      - name: Build the app for the simulator
+        working-directory: ios/AnymoneApp
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild build -scheme AnymoneApp \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload to TestFlight
+        if: >
+          github.event_name == 'workflow_dispatch' && inputs.testflight ||
+          github.ref == 'refs/heads/main'
+        working-directory: anymone-mobile
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          IOS_PROFILE_NAME: ${{ secrets.IOS_PROFILE_NAME }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: ./scripts/testflight.sh
