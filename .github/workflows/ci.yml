@@ -5,8 +5,6 @@ name: ci
 # anymone revision the mobile crate builds against is pinned in
 # crates/anymone-ffi/Cargo.toml.
 on:
-  push:
-  pull_request:
   workflow_dispatch:
     inputs:
       platform:
@@ -21,10 +19,14 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # cargo's built-in libgit2 stops at the first key the agent offers that
+  # GitHub rejects, so with one deploy key per private repo it never reaches
+  # the second. The git CLI tries them all.
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 jobs:
   host-and-android:
-    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'ios'
+    if: inputs.platform != 'ios'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +61,7 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
 
   ios:
-    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'android'
+    if: inputs.platform != 'android'
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -88,10 +90,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Upload to TestFlight
-        if: >
-          github.event_name == 'workflow_dispatch' && inputs.testflight ||
-          github.ref == 'refs/heads/main'
-        working-directory: anymone-mobile
+        if: inputs.testflight
         env:
           BUILD_NUMBER: ${{ github.run_number }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
