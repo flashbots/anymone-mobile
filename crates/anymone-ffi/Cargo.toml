@@ -11,7 +11,7 @@ name = "anymone_ffi"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
-anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "3170308705cfb64e2bb0b6df8abcd964368f446f" }
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67" }
 uniffi = { version = "0.29", features = ["tokio", "cli"] }
 async-trait = "0.1"
 once_cell = "1"
@@ -22,7 +22,7 @@ tracing = "0.1"
 [dev-dependencies]
 # mobile-attest so the tests drive the real platform verifiers, test-util for
 # their minters.
-anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "3170308705cfb64e2bb0b6df8abcd964368f446f", features = [
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67", features = [
     "test-util",
     "mobile-attest",
 ] }

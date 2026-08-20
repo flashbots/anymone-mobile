@@ -128,7 +128,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anymone-core"
 version = "0.0.1"
-source = "git+ssh://git@github.com/flashbots/anymone?rev=3170308705cfb64e2bb0b6df8abcd964368f446f#3170308705cfb64e2bb0b6df8abcd964368f446f"
+source = "git+ssh://git@github.com/flashbots/anymone?rev=2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67#2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67"
 dependencies = [
  "adcnet",
  "aes-gcm",
@@ -320,7 +320,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "attest-types"
 version = "0.0.1"
-source = "git+ssh://git@github.com/flashbots/attest?rev=8206cd19d9dcb1978d85a3d8dece06a3ee7a1206#8206cd19d9dcb1978d85a3d8dece06a3ee7a1206"
+source = "git+https://github.com/flashbots/attest?rev=8206cd19d9dcb1978d85a3d8dece06a3ee7a1206#8206cd19d9dcb1978d85a3d8dece06a3ee7a1206"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -2830,7 +2830,7 @@ dependencies = [
 [[package]]
 name = "panetiere"
 version = "0.1.0"
-source = "git+ssh://git@github.com/flashbots/panetiere?rev=f1277191f5ed99570449ee080bc21fcf278abc2c#f1277191f5ed99570449ee080bc21fcf278abc2c"
+source = "git+https://github.com/flashbots/panetiere?rev=f1277191f5ed99570449ee080bc21fcf278abc2c#f1277191f5ed99570449ee080bc21fcf278abc2c"
 dependencies = [
  "aes-gcm",
  "chipmunk_code",
