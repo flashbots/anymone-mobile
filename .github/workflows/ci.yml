@@ -69,6 +69,10 @@ jobs:
         run: |
           cargo install cargo-ndk --locked
           ./scripts/build-android.sh
+      # AGP 8.5.2 supports Gradle 8.7+ but not 9.x, and the runner image ships 9.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
       - name: Gradle build
         working-directory: android
         run: gradle --no-daemon assembleDebug

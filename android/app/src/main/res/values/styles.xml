@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Anymone" parent="Theme.Material3.Dark.NoActionBar">
+    <!-- Platform theme: every screen is Compose, so this only needs to supply a
+         dark window with no action bar. -->
+    <style name="Theme.Anymone" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">#080B09</item>
         <item name="android:statusBarColor">#080B09</item>
         <item name="android:navigationBarColor">#080B09</item>

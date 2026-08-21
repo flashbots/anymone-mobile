@@ -16,7 +16,10 @@ done
 # Host build only so uniffi-bindgen can read the metadata out of a loadable dylib.
 cargo build "${CARGO_FLAGS[@]}"
 
-HOST_LIB=$(ls "target/$PROFILE"/libanymone_ffi.dylib "target/$PROFILE"/libanymone_ffi.so 2>/dev/null | head -1)
+for candidate in "target/$PROFILE"/libanymone_ffi.{dylib,so}; do
+  [ -f "$candidate" ] && HOST_LIB=$candidate && break
+done
+: "${HOST_LIB:?no host library under target/$PROFILE}"
 rm -rf gen/swift
 cargo run -p anymone-ffi --bin uniffi-bindgen -- generate \
   --library "$HOST_LIB" --language swift --out-dir gen/swift --no-format
