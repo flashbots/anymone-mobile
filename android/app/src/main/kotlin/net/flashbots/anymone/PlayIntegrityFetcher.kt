@@ -2,6 +2,7 @@ package net.flashbots.anymone
 
 import android.content.Context
 import android.util.Base64
+import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
 import com.google.android.play.core.integrity.StandardIntegrityManager.PrepareIntegrityTokenRequest
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest
@@ -26,7 +27,7 @@ class PlayIntegrityFetcher(
     context: Context,
     private val cloudProjectNumber: Long,
 ) : AttestationTokenFetcher {
-    private val manager = StandardIntegrityManager(context)
+    private val manager = IntegrityManagerFactory.createStandard(context)
     private var provider: StandardIntegrityManager.StandardIntegrityTokenProvider? = null
 
     private suspend fun provider(): StandardIntegrityManager.StandardIntegrityTokenProvider {

@@ -3,6 +3,9 @@
 name: AnymoneApp
 options:
   bundleIdPrefix: net.flashbots
+  # Whatever xcodegen brew installs would otherwise write its own era's format;
+  # 56 is what Xcode 15 reads, and the runner has 15.4.
+  objectVersion: 56
   deploymentTarget:
     iOS: "15.0"
 packages:
