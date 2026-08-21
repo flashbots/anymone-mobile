@@ -59,6 +59,13 @@ jobs:
         with:
           targets: aarch64-linux-android
       - uses: Swatinem/rust-cache@v2
+      # Two cargo target dirs plus the NDK do not fit next to the image's
+      # preinstalled toolchains. The Android SDK stays — gradle needs it.
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell \
+            /usr/local/share/boost /usr/local/lib/node_modules
+          df -h /
       - uses: nttld/setup-ndk@v1
         id: ndk
         with:
@@ -84,7 +91,9 @@ jobs:
 
   ios:
     if: inputs.platform != 'android'
-    runs-on: macos-14
+    # brew installs the current xcodegen, which writes the Xcode 16 project
+    # format; macos-14 only has Xcode 15.4 and cannot read it.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: webfactory/ssh-agent@v0.9.0

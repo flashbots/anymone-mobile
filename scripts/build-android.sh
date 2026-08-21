@@ -15,6 +15,9 @@ rustup target add aarch64-linux-android x86_64-linux-android >/dev/null
 CARGO_FLAGS=(-p anymone-ffi)
 [ "$PROFILE" = release ] && CARGO_FLAGS+=(--release)
 
+# Cleaned first: cargo emits hash-suffixed .so names, so stale ones would keep
+# accumulating and get packaged alongside the current build.
+rm -rf android/core/src/main/jniLibs
 cargo ndk "${TARGETS[@]}" --platform 29 \
   -o android/core/src/main/jniLibs build "${CARGO_FLAGS[@]}"
 
