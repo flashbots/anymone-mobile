@@ -118,9 +118,11 @@ jobs:
         run: |
           brew install xcodegen
           xcodegen generate
+          # ARCHS pins the one simulator slice build-ios.sh produces; a generic
+          # destination would also demand x86_64.
           xcodebuild build -scheme AnymoneApp \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO
 
       - name: Upload to TestFlight
         if: inputs.testflight

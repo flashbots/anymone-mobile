@@ -15,7 +15,12 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1"
-        ndk { abiFilters += listOf("arm64-v8a") }
+        // -Pemulator adds the x86_64 slice for a desktop emulator; handset
+        // builds stay arm64-only.
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+            if (project.hasProperty("emulator")) abiFilters += listOf("x86_64")
+        }
     }
     sourceSets["main"].kotlin.srcDir("src/main/kotlin")
     buildFeatures { compose = true }

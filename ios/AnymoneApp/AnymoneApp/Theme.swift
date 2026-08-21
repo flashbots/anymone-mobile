@@ -100,7 +100,9 @@ struct HouseField: View {
     var monoSize: CGFloat = 12
 
     var body: some View {
-        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Ink.fog))
+        // foregroundColor, not foregroundStyle: `prompt` needs a Text, and the
+        // Text-returning foregroundStyle overload is iOS 17.
+        TextField("", text: $text, prompt: Text(placeholder).foregroundColor(Ink.fog))
             .textFieldStyle(.plain)
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
