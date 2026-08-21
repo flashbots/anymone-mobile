@@ -25,6 +25,24 @@ env:
   CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 jobs:
+  # Separate from the build jobs so a failing test is visible as a red job
+  # without withholding the artifacts.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
+      - name: Vendor adcnet-rs with its own deploy key
+        env:
+          ADCNET_DEPLOY_KEY: ${{ secrets.ADCNET_DEPLOY_KEY }}
+        run: ./scripts/ci-git-auth.sh
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # Every target reports, so one broken test does not hide the next.
+      - run: cargo test --no-fail-fast -p anymone-ffi
+
   host-and-android:
     if: inputs.platform != 'ios'
     runs-on: ubuntu-latest
@@ -41,8 +59,6 @@ jobs:
         with:
           targets: aarch64-linux-android
       - uses: Swatinem/rust-cache@v2
-      - name: Host tests
-        run: cargo test -p anymone-ffi
       - uses: nttld/setup-ndk@v1
         id: ndk
         with:

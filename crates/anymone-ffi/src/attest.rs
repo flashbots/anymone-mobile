@@ -197,8 +197,20 @@ mod tests {
         }
     }
 
-    async fn settle() {
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    /// Polls rather than sleeping a fixed span: the fetch completes on another
+    /// runtime, so any fixed wait is a flake on a loaded runner.
+    async fn wait_for(mut done: impl FnMut() -> bool) {
+        for _ in 0..300 {
+            if done() {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        panic!("condition never held");
+    }
+
+    fn is_ready(s: AttestationStatus) -> bool {
+        matches!(s, AttestationStatus::Ready { .. })
     }
 
     #[tokio::test]
@@ -211,7 +223,7 @@ mod tests {
 
         assert!(matches!(prover.status(), AttestationStatus::Cold));
         assert!(prover.attest(&pk, 5).is_err(), "first call only starts a fetch");
-        settle().await;
+        wait_for(|| is_ready(prover.status())).await;
 
         let att = prover.attest(&pk, 5).expect("token cached after the fetch");
         assert_eq!(att.round, 5);
@@ -228,7 +240,7 @@ mod tests {
         let prover = BridgeProver::new(MobileScheme::PlayIntegrity, Arc::new(Canned(Ok(vec![4]))));
         let pk = [1u8; 32];
         let _ = prover.attest(&pk, 10);
-        settle().await;
+        wait_for(|| is_ready(prover.status())).await;
 
         // Inside the window the same evidence is reused, so a client does not
         // spend a platform request every round.
@@ -237,33 +249,48 @@ mod tests {
         assert!(prover.attest(&pk, 10 + MAX_AGE_ROUNDS).is_err());
     }
 
+    /// Counts attempts, so a fresh fetch is distinguishable from a latched
+    /// failure without racing the spawned task for a transient `Pending`.
+    struct CountingFail(Mutex<u32>);
+
+    #[async_trait::async_trait]
+    impl AttestationTokenFetcher for CountingFail {
+        async fn fetch(&self, _challenge: Vec<u8>) -> Result<Vec<u8>, FetchError> {
+            *self.0.lock().unwrap() += 1;
+            Err(FetchError::Unavailable("simulator".into()))
+        }
+    }
+
     #[tokio::test]
     async fn failure_is_reported_and_retried() {
-        let prover = BridgeProver::new(
-            MobileScheme::AppAttest,
-            Arc::new(Canned(Err(FetchError::Unavailable("simulator".into())))),
-        );
+        let fetcher = Arc::new(CountingFail(Mutex::new(0)));
+        let prover = BridgeProver::new(MobileScheme::AppAttest, fetcher.clone());
         let pk = [2u8; 32];
         assert!(prover.attest(&pk, 1).is_err());
-        settle().await;
+        wait_for(|| matches!(prover.status(), AttestationStatus::Failed { .. })).await;
         match prover.status() {
             AttestationStatus::Failed { detail } => assert!(detail.contains("simulator")),
             other => panic!("expected a failed status, got {other:?}"),
         }
         // A later round starts a fresh attempt rather than latching the failure.
         assert!(prover.attest(&pk, 2).is_err());
-        assert!(matches!(prover.status(), AttestationStatus::Pending { .. }));
+        wait_for(|| *fetcher.0.lock().unwrap() == 2).await;
     }
 
     /// Stalls the one challenge it is given, so completions arrive in the
-    /// reverse of the request order.
-    struct SlowFor(Vec<u8>);
+    /// reverse of the request order. `done` marks the stalled one landing.
+    struct SlowFor {
+        stalled: Vec<u8>,
+        done: std::sync::atomic::AtomicBool,
+    }
 
     #[async_trait::async_trait]
     impl AttestationTokenFetcher for SlowFor {
         async fn fetch(&self, challenge: Vec<u8>) -> Result<Vec<u8>, FetchError> {
-            if challenge == self.0 {
-                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            if challenge == self.stalled {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                self.done
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
                 return Ok(vec![1]);
             }
             Ok(vec![2])
@@ -273,21 +300,29 @@ mod tests {
     #[tokio::test]
     async fn a_late_fetch_does_not_clobber_a_newer_round() {
         let pk = [4u8; 32];
-        let stalled = tee::challenge(AttestationScheme::AppAttest, &pk, 1).to_vec();
-        let prover = BridgeProver::new(MobileScheme::AppAttest, Arc::new(SlowFor(stalled)));
+        let fetcher = Arc::new(SlowFor {
+            stalled: tee::challenge(AttestationScheme::AppAttest, &pk, 1).to_vec(),
+            done: std::sync::atomic::AtomicBool::new(false),
+        });
+        let prover = BridgeProver::new(MobileScheme::AppAttest, fetcher.clone());
 
         assert!(prover.attest(&pk, 1).is_err());
         assert!(prover.attest(&pk, 2).is_err());
-        settle().await;
+        wait_for(|| is_ready(prover.status())).await;
         assert!(matches!(
             prover.status(),
             AttestationStatus::Ready { round: 2, .. }
         ));
 
-        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-        let att = prover.attest(&pk, 2).expect("round 2 token still held");
-        assert_eq!(att.round, 2);
-        assert_eq!(att.evidence, vec![2]);
+        // The round-1 fetch resolves last; without the generation guard its
+        // write lands here, within microseconds of `done`.
+        wait_for(|| fetcher.done.load(std::sync::atomic::Ordering::SeqCst)).await;
+        for _ in 0..10 {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            let att = prover.attest(&pk, 2).expect("round 2 token still held");
+            assert_eq!(att.round, 2);
+            assert_eq!(att.evidence, vec![2], "a stale fetch overwrote a newer round");
+        }
     }
 
     #[tokio::test]
@@ -296,7 +331,7 @@ mod tests {
         let prover = BridgeProver::new(MobileScheme::AppAttest, fetcher.clone());
         let pk = [3u8; 32];
         let _ = prover.attest(&pk, 42);
-        settle().await;
+        wait_for(|| fetcher.0.lock().unwrap().len() == 1).await;
 
         let seen = fetcher.0.lock().unwrap().clone();
         assert_eq!(seen.len(), 1);
@@ -355,7 +390,7 @@ mod tests {
             Arc::new(Keystore(minter.clone(), pk, round)),
         );
         let _ = prover.attest(&pk.0, round);
-        settle().await;
+        wait_for(|| is_ready(prover.status())).await;
         let att = prover.attest(&pk.0, round).expect("chain ready");
         assert_eq!(att.scheme, AttestationScheme::AndroidKeyAttestation);
 
@@ -401,7 +436,7 @@ mod tests {
         let identity = anymone_core::Identity::generate();
         let pk = identity.pubkey();
         let _ = prover.attest(&pk.0, 3);
-        settle().await;
+        wait_for(|| is_ready(prover.status())).await;
         let att = prover.attest(&pk.0, 3).expect("token ready");
 
         let gate = AttestedClients::new();

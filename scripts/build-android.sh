@@ -19,7 +19,10 @@ cargo ndk "${TARGETS[@]}" --platform 29 \
   -o android/core/src/main/jniLibs build "${CARGO_FLAGS[@]}"
 
 cargo build "${CARGO_FLAGS[@]}"
-HOST_LIB=$(ls "target/$PROFILE"/libanymone_ffi.so "target/$PROFILE"/libanymone_ffi.dylib 2>/dev/null | head -1)
+for candidate in "target/$PROFILE"/libanymone_ffi.{so,dylib}; do
+  [ -f "$candidate" ] && HOST_LIB=$candidate && break
+done
+: "${HOST_LIB:?no host library under target/$PROFILE}"
 
 OUT=android/core/src/main/kotlin
 rm -rf "$OUT/net" && mkdir -p "$OUT"

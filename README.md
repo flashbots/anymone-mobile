@@ -23,24 +23,18 @@ ios/AnymoneApp       the app (project.yml -> `xcodegen generate`)
 android              :core (bindings + .so) and :app (Compose)
 ```
 
-## Building
+## The anymone dependency
 
 The crate depends on anymone as a pinned git dependency:
 
 ```
-ssh://git@github.com/flashbots/anymone  rev 3170308  (branch attested-subnets)
+ssh://git@github.com/flashbots/anymone  rev 2833fb0  (branch attested-subnets)
 ```
 
 That revision carries the `tee` module this crate's prover plugs into. Core
 changes reach the mobile build only once they are pushed and the `rev` in
 `crates/anymone-ffi/Cargo.toml` is bumped. Repoint it at a `main` rev once
 attested-subnets lands there.
-
-```sh
-cargo test -p anymone-ffi          # host: wrappers + prover + benches
-./scripts/build-ios.sh             # needs macOS + Xcode; runs in CI
-./scripts/build-android.sh         # needs ANDROID_NDK_HOME and cargo-ndk
-```
 
 ## Getting a build onto an iPhone
 
