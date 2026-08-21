@@ -4,7 +4,8 @@ name: AnymoneApp
 options:
   bundleIdPrefix: net.flashbots
   deploymentTarget:
-    iOS: "15.0"
+    # 16 for ShareLink, which exports the benchmark CSV.
+    iOS: "16.0"
 packages:
   AnymoneKit:
     path: ../AnymoneKit

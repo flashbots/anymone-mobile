@@ -5,7 +5,7 @@ import PackageDescription
 // products of scripts/build-ios.sh, not checked in.
 let package = Package(
     name: "AnymoneKit",
-    platforms: [.iOS(.v15)],
+    platforms: [.iOS(.v16)],
     products: [
         .library(name: "AnymoneKit", targets: ["AnymoneKit"])
     ],
