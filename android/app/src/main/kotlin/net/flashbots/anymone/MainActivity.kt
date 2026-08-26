@@ -1,5 +1,7 @@
 package net.flashbots.anymone
 
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,11 +43,21 @@ import net.flashbots.anymone.ffi.AttestationStatus
 import net.flashbots.anymone.ffi.BenchResult
 import net.flashbots.anymone.ffi.MobileScheme
 import net.flashbots.anymone.ffi.benchNames
+import net.flashbots.anymone.ffi.benchReportCsv
 import net.flashbots.anymone.ffi.benchReps
+import net.flashbots.anymone.ffi.clientRoleMedianNs
 import net.flashbots.anymone.ffi.runBench
+import net.flashbots.anymone.ffi.runSmoke
+import net.flashbots.anymone.ffi.smokeNames
+import net.flashbots.anymone.ffi.smokeReportCsv
 
-/** Committee default public_round_ms — what a client round has to fit inside. */
+/** Committee default public_round_ms, kept as the reference to report against. */
 private const val ROUND_BUDGET_NS = 4_000_000_000L
+
+/** Flagged only past this: a large cell legitimately runs far over the 4 s
+ *  reference, and calling that a failure would hide the measurement. */
+private const val ROUND_CEILING_NS = 60_000_000_000L
+private const val ROUND_BENCH = "anymone_panetiere_round"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,19 +135,35 @@ private fun TabStrip(current: Screen, onPick: (Screen) -> Unit) {
 @Composable
 private fun BenchScreen() {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var results by remember { mutableStateOf(listOf<BenchResult>()) }
     var running by remember { mutableStateOf<String?>(null) }
+    var smokeMode by remember { mutableStateOf(false) }
 
     SectionLabel("01", "bench", "client hot paths")
     Text(
-        "Times what a client actually runs each round: KAHE encryption, the coded "
-            + "lanes, one ML-KEM seal per relay, signatures.",
+        "panetiere_* mirror the host sweep's Prony direct and RS phases, plus "
+            + "MSE encoding: 8 servers, 50 messages a round, 1 KB payloads. anymone_* time "
+            + "a whole round as the client runs it, framing and signatures included.",
         style = mono(11),
         color = Ink.fog,
     )
     Spacer(Modifier.height(14.dp))
+    HouseButton("smoke 4×10", outline = true, enabled = running == null) {
+        scope.launch {
+            smokeMode = true
+            results = emptyList()
+            for (name in smokeNames()) {
+                running = name
+                results = results + withContext(Dispatchers.Default) { runSmoke(name) }
+            }
+            running = null
+        }
+    }
+    Spacer(Modifier.height(8.dp))
     HouseButton(running?.let { "running $it" } ?: "run all", enabled = running == null) {
         scope.launch {
+            smokeMode = false
             results = emptyList()
             for (name in benchNames()) {
                 running = name
@@ -149,7 +177,7 @@ private fun BenchScreen() {
         SectionLabel("02", "results", "median ns per op")
         Hairline()
         results.forEach { r ->
-            val slow = r.name == "panetiere_client_round" && r.medianNs.toLong() >= ROUND_BUDGET_NS
+            val slow = r.name == ROUND_BENCH && r.medianNs.toLong() >= ROUND_CEILING_NS
             Row(r.name, format(r.medianNs.toLong()), if (slow) Ink.ember else Ink.moon)
             Row(
                 "  ${r.reps} reps",
@@ -158,13 +186,48 @@ private fun BenchScreen() {
             )
             Hairline()
         }
-        results.firstOrNull { it.name == "panetiere_client_round" }?.let { r ->
+        // The host sweep's client-role total, for comparison against it.
+        clientRoleMedianNs(results).toLong().takeIf { it > 0 }?.let {
+            Row("panetiere prony client", format(it), Ink.lichen)
+            Hairline()
+        }
+        results.firstOrNull { it.name == ROUND_BENCH }?.let { r ->
             val share = r.medianNs.toLong() * 100.0 / ROUND_BUDGET_NS
             Spacer(Modifier.height(10.dp))
             Text(
                 "a client round costs %.1f%% of the 4 s round budget on this device".format(share),
                 style = mono(11),
-                color = if (share < 100) Ink.lichen else Ink.ember,
+                color = if (r.medianNs.toLong() < ROUND_CEILING_NS) Ink.lichen else Ink.ember,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        HouseButton("export csv", outline = true) {
+            val report = if (smokeMode) {
+                smokeReportCsv(
+                    results,
+                    "android",
+                    "${Build.MANUFACTURER} ${Build.MODEL}",
+                    "Android ${Build.VERSION.RELEASE} SDK ${Build.VERSION.SDK_INT}",
+                    "${Build.FINGERPRINT}; app ${BuildConfig.VERSION_NAME}",
+                )
+            } else {
+                benchReportCsv(
+                    results,
+                    "android",
+                    "${Build.MANUFACTURER} ${Build.MODEL}",
+                    "Android ${Build.VERSION.RELEASE} SDK ${Build.VERSION.SDK_INT}",
+                    "${Build.FINGERPRINT}; app ${BuildConfig.VERSION_NAME}",
+                )
+            }
+            context.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/csv"
+                        putExtra(Intent.EXTRA_SUBJECT, "Panetiere Android benchmark")
+                        putExtra(Intent.EXTRA_TEXT, report)
+                    },
+                    "Export benchmark",
+                ),
             )
         }
     }

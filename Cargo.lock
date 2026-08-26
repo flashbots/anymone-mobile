@@ -128,7 +128,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anymone-core"
 version = "0.0.1"
-source = "git+ssh://git@github.com/flashbots/anymone?rev=2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67#2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67"
+source = "git+ssh://git@github.com/flashbots/anymone?rev=1f85972e44e6ca08d58c9a935240301a1c131b03#1f85972e44e6ca08d58c9a935240301a1c131b03"
 dependencies = [
  "adcnet",
  "aes-gcm",
@@ -138,7 +138,6 @@ dependencies = [
  "attest-types",
  "base64",
  "bincode",
- "chipmunk_code",
  "ciborium",
  "commonware-codec",
  "commonware-cryptography",
@@ -175,6 +174,9 @@ dependencies = [
  "anymone-core",
  "async-trait",
  "once_cell",
+ "panetiere",
+ "rand_chacha 0.3.1",
+ "rayon",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
@@ -642,11 +644,12 @@ dependencies = [
 [[package]]
 name = "chipmunk_code"
 version = "0.1.0"
-source = "git+https://github.com/Ruteri/Chipmunk?branch=main#f6b73ef6796fd5ecdd7a6c048c00b710ea132a2a"
+source = "git+https://github.com/Ruteri/Chipmunk?branch=main#e347068a0134a95c73d47933916feeb3ab312b28"
 dependencies = [
  "ark-std",
  "env_logger",
  "log",
+ "negacyclic-rings",
  "rand 0.8.7",
  "rand_chacha 0.3.1",
  "rayon",
@@ -1629,7 +1632,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2319,7 +2322,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2582,6 +2585,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "negacyclic-rings"
+version = "0.1.0"
+source = "git+https://github.com/Ruteri/negacyclic-rings?branch=main#57a39cfa1ebe4850b743bc282489dcfc761e227e"
+dependencies = [
+ "rand 0.8.7",
+ "rand_chacha 0.3.1",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2830,11 +2843,12 @@ dependencies = [
 [[package]]
 name = "panetiere"
 version = "0.1.0"
-source = "git+https://github.com/flashbots/panetiere?rev=f1277191f5ed99570449ee080bc21fcf278abc2c#f1277191f5ed99570449ee080bc21fcf278abc2c"
+source = "git+https://github.com/flashbots/panetiere?rev=26560cf2265d49c59cf318401e15fc8464b1279d#26560cf2265d49c59cf318401e15fc8464b1279d"
 dependencies = [
  "aes-gcm",
  "chipmunk_code",
  "ml-kem",
+ "negacyclic-rings",
  "p256 0.13.2",
  "rand 0.8.7",
  "rand_chacha 0.3.1",
@@ -3544,7 +3558,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4054,7 +4068,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4828,7 +4842,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

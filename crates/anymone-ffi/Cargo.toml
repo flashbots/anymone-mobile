@@ -11,7 +11,12 @@ name = "anymone_ffi"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
-anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67" }
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "1f85972e44e6ca08d58c9a935240301a1c131b03" }
+panetiere = { git = "https://github.com/flashbots/panetiere", rev = "26560cf2265d49c59cf318401e15fc8464b1279d", features = [
+    "rns",
+] }
+rand_chacha = "0.3"
+rayon = "1"
 uniffi = { version = "0.29", features = ["tokio", "cli"] }
 async-trait = "0.1"
 once_cell = "1"
@@ -22,7 +27,7 @@ tracing = "0.1"
 [dev-dependencies]
 # mobile-attest so the tests drive the real platform verifiers, test-util for
 # their minters.
-anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "2833fb08cdc5c3a4ae206f1f217d2c6ffb68cc67", features = [
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "1f85972e44e6ca08d58c9a935240301a1c131b03", features = [
     "test-util",
     "mobile-attest",
 ] }
@@ -30,3 +35,7 @@ anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "2833fb08
 [[bin]]
 name = "uniffi-bindgen"
 path = "src/bin/uniffi-bindgen.rs"
+
+[[bin]]
+name = "panetiere-mobile-merge"
+path = "src/bin/panetiere-mobile-merge.rs"

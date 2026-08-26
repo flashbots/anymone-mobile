@@ -28,13 +28,37 @@ android              :core (bindings + .so) and :app (Compose)
 The crate depends on anymone as a pinned git dependency:
 
 ```
-ssh://git@github.com/flashbots/anymone  rev 2833fb0  (branch attested-subnets)
+ssh://git@github.com/flashbots/anymone  rev 1f85972
 ```
 
 That revision carries the `tee` module this crate's prover plugs into. Core
 changes reach the mobile build only once they are pushed and the `rev` in
 `crates/anymone-ffi/Cargo.toml` is bumped. Repoint it at a `main` rev once
 attested-subnets lands there.
+
+## Merging handset benchmarks into Panetiere
+
+The Bench screen measures every client-owned direct and RS phase for Prony, an
+MSE encoding microbenchmark, and the full Anymone Prony round. Each operation
+gets one untimed warmup and five measured samples.
+
+`Smoke 4×10` is the emulator lane: one Prony round, one MSE round, ECDH and
+signing at 4 servers and 10 expected messages. Each runs once without a warmup.
+Smoke CSVs carry `mode=smoke` and the merge tool rejects them.
+Export writes the cell identity, Android/iOS environment, hardware, OS, build,
+Rayon width, CPU affinity and timing spread to CSV.
+
+Run the matching cell in Panetiere, then replace that host row's client timings
+and recompute its composed and projected columns:
+
+```sh
+cargo run --release -p anymone-ffi --bin panetiere-mobile-merge -- \
+  mobile.csv host.csv mobile-merged.csv
+```
+
+The merge refuses a missing or ambiguous cell and requires matching server,
+client, flow, payload, encoding geometry and RS plan. Host server/verifier
+measurements remain unchanged.
 
 ## Getting a build onto an iPhone
 

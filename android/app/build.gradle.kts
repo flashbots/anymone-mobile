@@ -23,7 +23,11 @@ android {
         }
     }
     sourceSets["main"].kotlin.srcDir("src/main/kotlin")
-    buildFeatures { compose = true }
+    // buildConfig is off by default in AGP 8; the CSV export stamps VERSION_NAME.
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
