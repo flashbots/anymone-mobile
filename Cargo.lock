@@ -128,7 +128,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anymone-core"
 version = "0.0.1"
-source = "git+ssh://git@github.com/flashbots/anymone?rev=1f85972e44e6ca08d58c9a935240301a1c131b03#1f85972e44e6ca08d58c9a935240301a1c131b03"
+source = "git+ssh://git@github.com/flashbots/anymone?rev=eeae218fda1403d6ce7fcbac2befca3c2654a5d2#eeae218fda1403d6ce7fcbac2befca3c2654a5d2"
 dependencies = [
  "adcnet",
  "aes-gcm",
@@ -173,6 +173,7 @@ version = "0.1.0"
 dependencies = [
  "anymone-core",
  "async-trait",
+ "libc",
  "once_cell",
  "panetiere",
  "rand_chacha 0.3.1",
@@ -2587,7 +2588,7 @@ dependencies = [
 [[package]]
 name = "negacyclic-rings"
 version = "0.1.0"
-source = "git+https://github.com/Ruteri/negacyclic-rings?branch=main#57a39cfa1ebe4850b743bc282489dcfc761e227e"
+source = "git+https://github.com/Ruteri/negacyclic-rings?branch=main#b2f5cfb0d329d24a90b8905504485d192b53b035"
 dependencies = [
  "rand 0.8.7",
  "rand_chacha 0.3.1",
@@ -2843,7 +2844,7 @@ dependencies = [
 [[package]]
 name = "panetiere"
 version = "0.1.0"
-source = "git+https://github.com/flashbots/panetiere?rev=26560cf2265d49c59cf318401e15fc8464b1279d#26560cf2265d49c59cf318401e15fc8464b1279d"
+source = "git+https://github.com/flashbots/panetiere?rev=e5c9cdf033b4873ee3a97210d97b37f435c5f573#e5c9cdf033b4873ee3a97210d97b37f435c5f573"
 dependencies = [
  "aes-gcm",
  "chipmunk_code",

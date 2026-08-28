@@ -215,14 +215,15 @@ mod tests {
 
     #[tokio::test]
     async fn cold_then_pending_then_ready() {
-        let prover = BridgeProver::new(
-            MobileScheme::AppAttest,
-            Arc::new(Canned(Ok(vec![1, 2, 3]))),
-        );
+        let prover =
+            BridgeProver::new(MobileScheme::AppAttest, Arc::new(Canned(Ok(vec![1, 2, 3]))));
         let pk = [9u8; 32];
 
         assert!(matches!(prover.status(), AttestationStatus::Cold));
-        assert!(prover.attest(&pk, 5).is_err(), "first call only starts a fetch");
+        assert!(
+            prover.attest(&pk, 5).is_err(),
+            "first call only starts a fetch"
+        );
         wait_for(|| is_ready(prover.status())).await;
 
         let att = prover.attest(&pk, 5).expect("token cached after the fetch");
@@ -244,7 +245,10 @@ mod tests {
 
         // Inside the window the same evidence is reused, so a client does not
         // spend a platform request every round.
-        assert_eq!(prover.attest(&pk, 10 + MAX_AGE_ROUNDS - 1).unwrap().round, 10);
+        assert_eq!(
+            prover.attest(&pk, 10 + MAX_AGE_ROUNDS - 1).unwrap().round,
+            10
+        );
         // At the edge it refetches instead of handing back a stale round.
         assert!(prover.attest(&pk, 10 + MAX_AGE_ROUNDS).is_err());
     }
@@ -289,8 +293,7 @@ mod tests {
         async fn fetch(&self, challenge: Vec<u8>) -> Result<Vec<u8>, FetchError> {
             if challenge == self.stalled {
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                self.done
-                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                self.done.store(true, std::sync::atomic::Ordering::SeqCst);
                 return Ok(vec![1]);
             }
             Ok(vec![2])
@@ -321,7 +324,11 @@ mod tests {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
             let att = prover.attest(&pk, 2).expect("round 2 token still held");
             assert_eq!(att.round, 2);
-            assert_eq!(att.evidence, vec![2], "a stale fetch overwrote a newer round");
+            assert_eq!(
+                att.evidence,
+                vec![2],
+                "a stale fetch overwrote a newer round"
+            );
         }
     }
 
@@ -373,12 +380,8 @@ mod tests {
                 let minted = self.0.mint(&self.1 .0, self.2);
                 assert_eq!(
                     challenge,
-                    tee::challenge(
-                        AttestationScheme::AndroidKeyAttestation,
-                        &self.1 .0,
-                        self.2
-                    )
-                    .to_vec()
+                    tee::challenge(AttestationScheme::AndroidKeyAttestation, &self.1 .0, self.2)
+                        .to_vec()
                 );
                 Ok(minted)
             }

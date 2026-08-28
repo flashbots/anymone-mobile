@@ -129,7 +129,11 @@ impl AnymoneClient {
         Ok(Self::wrap(prep.start().await?, prover))
     }
 
-    async fn open_with_retry<F, Fut>(&self, wait_ms: u64, open: F) -> Result<Arc<AnymonePipe>, AnymoneError>
+    async fn open_with_retry<F, Fut>(
+        &self,
+        wait_ms: u64,
+        open: F,
+    ) -> Result<Arc<AnymonePipe>, AnymoneError>
     where
         F: Fn(Anymone) -> Fut + Send + 'static,
         Fut: std::future::Future<Output = Result<Pipe, anymone_core::OpenError>> + Send,
@@ -199,7 +203,11 @@ impl AnymoneClient {
 
     /// Read a room without joining it: no sends, no cover, not in the
     /// anonymity set.
-    pub async fn listen(&self, tag: String, wait_ms: u64) -> Result<Arc<AnymonePipe>, AnymoneError> {
+    pub async fn listen(
+        &self,
+        tag: String,
+        wait_ms: u64,
+    ) -> Result<Arc<AnymonePipe>, AnymoneError> {
         let t = ServiceTag::from_label(&tag);
         self.open_with_retry(wait_ms, move |a| async move { a.listen(t).await })
             .await
@@ -343,8 +351,10 @@ mod tests {
 
         let mut relay_pks: Vec<_> = relays.iter().map(|i| i.pubkey()).collect();
         relay_pks.sort();
-        let mut relay_xk: Vec<(_, ExchangePublicKeyWire)> =
-            relays.iter().map(|i| (i.pubkey(), i.exchange_keys())).collect();
+        let mut relay_xk: Vec<(_, ExchangePublicKeyWire)> = relays
+            .iter()
+            .map(|i| (i.pubkey(), i.exchange_keys()))
+            .collect();
         relay_xk.sort_by_key(|(p, _)| *p);
 
         let cfg = AnymoneRoundConfiguration::singleton_subnet(
@@ -408,7 +418,10 @@ mod tests {
             .expect("recv timed out")
             .expect("pipe closed");
         assert!(reply.payload.starts_with(b"hello ffi"));
-        assert_eq!(pipe.own_return_tag().len(), anymone_core::wire::SERVICE_TAG_LEN);
+        assert_eq!(
+            pipe.own_return_tag().len(),
+            anymone_core::wire::SERVICE_TAG_LEN
+        );
 
         ffi.stop();
         assert!(matches!(ffi.max_payload(), Err(AnymoneError::Stopped)));
@@ -441,7 +454,10 @@ mod tests {
             AnymoneClient::bring_up(toml.into(), dir.display().to_string(), store.clone(), None),
         )
         .await;
-        assert!(outcome.is_err(), "no committee answers, so start cannot finish");
+        assert!(
+            outcome.is_err(),
+            "no committee answers, so start cannot finish"
+        );
 
         let secrets = store.0.lock().unwrap().clone().expect("identity minted");
         assert_eq!(secrets.len(), anymone_core::identity::SECRETS_LEN);

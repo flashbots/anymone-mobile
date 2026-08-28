@@ -14,8 +14,9 @@ mod secrets;
 
 pub use attest::{AttestationStatus, AttestationTokenFetcher, FetchError, MobileScheme};
 pub use bench::{
-    bench_names, bench_report_csv, bench_reps, client_role_median_ns, run_bench, run_smoke,
-    smoke_names, smoke_report_csv, BenchResult,
+    bench_names, bench_report_csv, bench_reps, bench_threads, client_role_median_ns,
+    core_sweep_report_csv, core_sweep_threads, run_bench, run_core_bench, run_smoke, smoke_names,
+    smoke_report_csv, BenchResult,
 };
 pub use client::{AnymoneClient, AnymoneEvent, AnymonePipe, IncomingMessage};
 pub use secrets::{SecretStore, SecretStoreError};

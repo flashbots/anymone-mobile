@@ -16,7 +16,6 @@ use anymone_core::{max_message_payload, Identity, PanetiereClientSession, Sessio
 use once_cell::sync::Lazy;
 use panetiere::bulletin::RsClientBulletinEntry;
 use panetiere::channel::{self, ChannelParams};
-use panetiere::digest::embed;
 use panetiere::kahe::{Kahe, KaheScheme};
 use panetiere::protocol::client::{
     cs_commit, kahe_encrypt, kahe_keygen, seal_openings, shamir_share,
@@ -38,13 +37,16 @@ const CLIENTS: u32 = 50;
 const MESSAGE_BYTES: usize = 1024;
 const SMOKE_SERVERS: usize = 4;
 const SMOKE_CLIENTS: u32 = 10;
+const BENCH_THREADS: u32 = 4;
+const CORE_SWEEP_REPS: usize = 3;
+const CORE_SWEEP_THREADS: &[u32] = &[1, 2, 4, 8];
 
 /// Fixed so a rerun times the same work, and so the phases compose: the key
 /// fed to `kahe_enc` is the one `share` splits.
 const SEED: [u8; 32] = [7u8; 32];
 const SESSION: SessionId = SessionId([0x5c; 32]);
-const PANETIERE_REV: &str = "26560cf2265d49c59cf318401e15fc8464b1279d";
-const ANYMONE_REV: &str = "1f85972e44e6ca08d58c9a935240301a1c131b03";
+const PANETIERE_REV: &str = "e5c9cdf033b4873ee3a97210d97b37f435c5f573";
+const ANYMONE_REV: &str = "eeae218fda1403d6ce7fcbac2befca3c2654a5d2";
 
 const PANETIERE_SETUP: &str = "panetiere_setup";
 const ENC_APP: &str = "panetiere_enc_app";
@@ -72,7 +74,6 @@ const SMOKE_ED25519: &str = "smoke_ed25519_sign";
 const CLIENT_ROLE: &[&str] = &[
     ENC_APP,
     KAHE_KEYGEN,
-    KAHE_ENC,
     SHARE,
     CS_COMMIT,
     SEAL,
@@ -100,6 +101,8 @@ enum ClientPhase {
 pub struct BenchResult {
     pub name: String,
     pub reps: u32,
+    pub threads: u32,
+    pub affinity: String,
     pub median_ns: u64,
     pub min_ns: u64,
     pub max_ns: u64,
@@ -143,6 +146,16 @@ pub fn smoke_names() -> Vec<String> {
     .collect()
 }
 
+#[uniffi::export]
+pub fn bench_threads() -> u32 {
+    BENCH_THREADS
+}
+
+#[uniffi::export]
+pub fn core_sweep_threads() -> Vec<u32> {
+    CORE_SWEEP_THREADS.to_vec()
+}
+
 /// Five for anything protocol-shaped, matching `scaling_bench`'s `REPS`; the
 /// primitives are cheap enough to average over many more.
 #[uniffi::export]
@@ -154,7 +167,7 @@ pub fn bench_reps(name: String) -> u32 {
     }
 }
 
-/// Sum of the Prony direct and RS client phase medians.
+/// Sum of the Prony RS client phase medians.
 #[uniffi::export]
 pub fn client_role_median_ns(results: Vec<BenchResult>) -> u64 {
     results
@@ -167,7 +180,11 @@ pub fn client_role_median_ns(results: Vec<BenchResult>) -> u64 {
 /// CPU-bound for seconds (`panetiere_setup` especially). Run off the UI thread,
 /// one benchmark at a time.
 #[uniffi::export]
-pub fn run_bench(name: String, reps: u32) -> Result<BenchResult, AnymoneError> {
+pub fn run_bench(name: String, reps: u32, threads: u32) -> Result<BenchResult, AnymoneError> {
+    run_in_pool(threads, || run_bench_inner(name, reps))
+}
+
+fn run_bench_inner(name: String, reps: u32) -> Result<BenchResult, AnymoneError> {
     let reps = reps.max(1) as usize;
     if let Some((ch, pp, phase)) = client_phase(&name) {
         return Ok(result(name, measure_client_phase(reps, ch, pp, phase)));
@@ -210,6 +227,10 @@ pub fn run_bench(name: String, reps: u32) -> Result<BenchResult, AnymoneError> {
 
 #[uniffi::export]
 pub fn run_smoke(name: String) -> Result<BenchResult, AnymoneError> {
+    run_in_pool(1, || run_smoke_inner(name))
+}
+
+fn run_smoke_inner(name: String) -> Result<BenchResult, AnymoneError> {
     let ns = match name.as_str() {
         SMOKE_PRONY_ROUND => {
             let payload = vec![0xab; smoke_prony_channel_params().max_payload_bytes()];
@@ -242,14 +263,174 @@ pub fn run_smoke(name: String) -> Result<BenchResult, AnymoneError> {
     Ok(result(name, ns))
 }
 
+#[uniffi::export]
+pub fn run_core_bench(threads: u32) -> Result<BenchResult, AnymoneError> {
+    if !CORE_SWEEP_THREADS.contains(&threads) {
+        return Err(AnymoneError::UnknownBench(format!("core count {threads}")));
+    }
+    run_in_pool(threads, || {
+        let payload = vec![0xab; channel_params().max_payload_bytes()];
+        let ns = measure(CORE_SWEEP_REPS, panetiere_session, move |session, round| {
+            session.stage(payload.clone());
+            let out = session.begin_round(round, Instant::now());
+            assert!(!out.is_empty(), "core-sweep client emitted nothing");
+            out
+        });
+        Ok(result(format!("anymone_panetiere_round_t{threads}"), ns))
+    })
+}
+
 fn result(name: String, mut ns: Vec<u64>) -> BenchResult {
     ns.sort_unstable();
     BenchResult {
         name,
         reps: ns.len() as u32,
+        threads: rayon::current_num_threads() as u32,
+        affinity: "?".into(),
         median_ns: ns[ns.len() / 2],
         min_ns: ns[0],
         max_ns: *ns.last().unwrap(),
+    }
+}
+
+fn run_in_pool(
+    threads: u32,
+    op: impl FnOnce() -> Result<BenchResult, AnymoneError> + Send,
+) -> Result<BenchResult, AnymoneError> {
+    let threads = threads.max(1) as usize;
+    let cpus = performance_cpus(threads);
+    let affinity = cpus
+        .iter()
+        .map(usize::to_string)
+        .collect::<Vec<_>>()
+        .join(";");
+    #[cfg(any(target_os = "android", target_os = "linux"))]
+    let pin_failed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    #[cfg(any(target_os = "android", target_os = "linux"))]
+    let builder = {
+        let worker_cpus = cpus.clone();
+        let pin_failed = pin_failed.clone();
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .spawn_handler(move |thread| {
+                let cpu = worker_cpus[thread.index() % worker_cpus.len()];
+                // spawn_handler is FnMut, so each worker needs its own handle.
+                let pin_failed = pin_failed.clone();
+                std::thread::Builder::new()
+                    .name(format!("bench-{cpu}"))
+                    .spawn(move || {
+                        if !pin_current_cpu(cpu) {
+                            pin_failed.store(true, std::sync::atomic::Ordering::Relaxed);
+                        }
+                        thread.run();
+                    })
+                    .map(|_| ())
+            })
+    };
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
+    let builder = rayon::ThreadPoolBuilder::new().num_threads(threads);
+    let pool = builder
+        .build()
+        .map_err(|e| AnymoneError::Config(format!("benchmark pool: {e}")))?;
+    let mut result = pool.install(op)?;
+    result.threads = threads as u32;
+    #[cfg(any(target_os = "android", target_os = "linux"))]
+    {
+        result.affinity = if pin_failed.load(std::sync::atomic::Ordering::Relaxed) {
+            format!("pin-failed;{affinity}")
+        } else {
+            affinity
+        };
+    }
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
+    {
+        result.affinity = format!("scheduler;{threads}");
+    }
+    Ok(result)
+}
+
+fn performance_cpus(threads: usize) -> Vec<usize> {
+    let mut cpus: Vec<_> = allowed_cpus()
+        .into_iter()
+        .map(|cpu| {
+            let path = format!("/sys/devices/system/cpu/cpu{cpu}/cpufreq/cpuinfo_max_freq");
+            let freq = std::fs::read_to_string(path)
+                .ok()
+                .and_then(|v| v.trim().parse::<u64>().ok())
+                .unwrap_or(0);
+            (cpu, freq, physical_core(cpu))
+        })
+        .collect();
+    cpus.sort_by_key(|&(cpu, freq, _)| std::cmp::Reverse((freq, cpu)));
+    let mut physical = std::collections::HashSet::new();
+    let mut selected = Vec::new();
+    for &(cpu, _, core) in &cpus {
+        if physical.insert(core) {
+            selected.push(cpu);
+            if selected.len() == threads {
+                return selected;
+            }
+        }
+    }
+    for (cpu, _, _) in cpus {
+        if !selected.contains(&cpu) {
+            selected.push(cpu);
+            if selected.len() == threads {
+                break;
+            }
+        }
+    }
+    if selected.is_empty() {
+        selected.push(0);
+    }
+    selected
+}
+
+fn physical_core(cpu: usize) -> (usize, usize) {
+    let read = |name: &str| {
+        std::fs::read_to_string(format!("/sys/devices/system/cpu/cpu{cpu}/topology/{name}"))
+            .ok()
+            .and_then(|v| v.trim().parse::<usize>().ok())
+    };
+    (
+        read("physical_package_id").unwrap_or(0),
+        read("core_id").unwrap_or(cpu),
+    )
+}
+
+fn allowed_cpus() -> Vec<usize> {
+    let list = std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find_map(|line| line.strip_prefix("Cpus_allowed_list:"))
+                .map(str::trim)
+                .map(str::to_string)
+        });
+    let mut out = Vec::new();
+    if let Some(list) = list {
+        for part in list.split(',') {
+            let (start, end) = part
+                .split_once('-')
+                .map_or((part, part), |(start, end)| (start, end));
+            if let (Ok(start), Ok(end)) = (start.parse::<usize>(), end.parse::<usize>()) {
+                out.extend(start..=end);
+            }
+        }
+    }
+    if out.is_empty() {
+        out.extend(0..std::thread::available_parallelism().map_or(1, usize::from));
+    }
+    out
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn pin_current_cpu(cpu: usize) -> bool {
+    unsafe {
+        let mut set: libc::cpu_set_t = std::mem::zeroed();
+        libc::CPU_ZERO(&mut set);
+        libc::CPU_SET(cpu, &mut set);
+        libc::sched_setaffinity(0, std::mem::size_of::<libc::cpu_set_t>(), &set) == 0
     }
 }
 
@@ -340,7 +521,15 @@ fn measure_client_phase(
                 seal_openings(rng, pp, &SESSION, ClientId(0), openings, servers)
             },
         ),
-        ClientPhase::RsDgtEmbed => measure(reps, || ciphertext_for(ch, pp), |ctxt, _| embed(ctxt)),
+        ClientPhase::RsDgtEmbed => measure(
+            reps,
+            || {
+                let mut rng = rng();
+                let key = kahe_keygen(&mut rng, pp);
+                (rng, key, message_for(ch, pp))
+            },
+            |(rng, key, msg), _| Kahe::enc_ntt(rng, &pp.kahe, key, msg),
+        ),
         ClientPhase::RsEnc => measure(
             reps,
             || embedded_ciphertext_for(ch, pp),
@@ -459,14 +648,10 @@ fn message_for(ch: &ChannelParams, pp: &ProtocolParams) -> <Kahe as KaheScheme>:
     polys
 }
 
-fn ciphertext_for(ch: &ChannelParams, pp: &ProtocolParams) -> Vec<panetiere::KahePoly> {
+fn embedded_ciphertext_for(ch: &ChannelParams, pp: &ProtocolParams) -> Vec<panetiere::RsNTTPoly> {
     let mut rng = rng();
     let key = kahe_keygen(&mut rng, pp);
-    kahe_encrypt(&mut rng, pp, &key, &message_for(ch, pp))
-}
-
-fn embedded_ciphertext_for(ch: &ChannelParams, pp: &ProtocolParams) -> Vec<panetiere::DgtNTTPoly> {
-    embed(&ciphertext_for(ch, pp))
+    Kahe::enc_ntt(&mut rng, &pp.kahe, &key, &message_for(ch, pp))
 }
 
 fn rs_shares_for(ch: &ChannelParams, pp: &ProtocolParams) -> Vec<panetiere::rs::Share> {
@@ -481,7 +666,7 @@ pub fn bench_report_csv(
     os: String,
     build: String,
 ) -> String {
-    report_csv(results, env, device, os, build, false)
+    report_csv(results, env, device, os, build, "benchmark")
 }
 
 #[uniffi::export]
@@ -492,7 +677,18 @@ pub fn smoke_report_csv(
     os: String,
     build: String,
 ) -> String {
-    report_csv(results, env, device, os, build, true)
+    report_csv(results, env, device, os, build, "smoke")
+}
+
+#[uniffi::export]
+pub fn core_sweep_report_csv(
+    results: Vec<BenchResult>,
+    env: String,
+    device: String,
+    os: String,
+    build: String,
+) -> String {
+    report_csv(results, env, device, os, build, "core-sweep")
 }
 
 fn report_csv(
@@ -501,9 +697,9 @@ fn report_csv(
     device: String,
     os: String,
     build: String,
-    smoke: bool,
+    mode: &str,
 ) -> String {
-    let affinity = affinity();
+    let smoke = mode == "smoke";
     let profile = if cfg!(debug_assertions) {
         "debug"
     } else {
@@ -543,10 +739,9 @@ fn report_csv(
             ChannelParams::Prony(p) => ("prony", p.cols(), p.cols()),
         };
         let rs = pp.rs.as_ref().unwrap();
-        let mode = if smoke { "smoke" } else { "benchmark" };
         let warmups = usize::from(!smoke);
         let common = format!(
-            "{mode},{},{},{},{},{profile},{PANETIERE_REV},{ANYMONE_REV},{warmups},{servers},{clients},{clients},0,{flow},{},{},{},{},{},{iblt_cells},{},{},{},{affinity}",
+            "{mode},{},{},{},{},{profile},{PANETIERE_REV},{ANYMONE_REV},{warmups},{servers},{clients},{clients},0,{flow},{},{},{},{},{},{iblt_cells},{},{},{},{}",
             csv_field(&env),
             csv_field(&device),
             csv_field(&os),
@@ -558,7 +753,8 @@ fn report_csv(
             message_polys(pp),
             rs.k,
             rs.n,
-            rayon::current_num_threads(),
+            r.threads,
+            csv_field(&r.affinity),
         );
         out.push_str(&format!(
             "{common},{},{},{},{},{}\n",
@@ -570,17 +766,6 @@ fn report_csv(
 
 fn csv_field(value: &str) -> String {
     value.replace([',', '\n', '\r'], " ")
-}
-
-fn affinity() -> String {
-    std::fs::read_to_string("/proc/self/status")
-        .ok()
-        .and_then(|s| {
-            s.lines()
-                .find_map(|l| l.strip_prefix("Cpus_allowed_list:"))
-                .map(|v| v.trim().to_string())
-        })
-        .unwrap_or_else(|| "?".into())
 }
 
 fn panetiere_config() -> PanetiereConfig {
@@ -679,7 +864,7 @@ mod tests {
     #[test]
     fn all_benches_run() {
         for name in bench_names() {
-            let r = run_bench(name.clone(), 1).expect("bench runs");
+            let r = run_bench(name.clone(), 1, BENCH_THREADS).expect("bench runs");
             assert_eq!(r.name, name);
             assert!(r.min_ns > 0, "{name} reported no time");
             assert!(r.min_ns <= r.median_ns && r.median_ns <= r.max_ns);
@@ -704,6 +889,8 @@ mod tests {
         let row = |name: &str, ns: u64| BenchResult {
             name: name.into(),
             reps: 1,
+            threads: 4,
+            affinity: "0;1;2;3".into(),
             median_ns: ns,
             min_ns: ns,
             max_ns: ns,
@@ -715,10 +902,14 @@ mod tests {
             row(SHARE, 8),
             row(CS_COMMIT, 16),
             row(SEAL, 32),
+            row(RS_DGT_EMBED, 64),
+            row(RS_ENC, 128),
+            row(RS_SHARE_COMMIT, 256),
+            row(RS_CLIENT_SIGN, 512),
             row(ANYMONE_PANETIERE_ROUND, 1_000),
             row(PANETIERE_SETUP, 1_000),
         ];
-        assert_eq!(client_role_median_ns(rows), 63);
+        assert_eq!(client_role_median_ns(rows), 1_019);
     }
 
     #[test]
@@ -727,6 +918,7 @@ mod tests {
         for name in CLIENT_ROLE {
             assert!(names.iter().any(|candidate| candidate == name));
         }
+        assert!(names.iter().any(|candidate| candidate == KAHE_ENC));
         assert!(names.iter().any(|candidate| candidate == MSE_ENC_APP));
     }
 
@@ -735,6 +927,8 @@ mod tests {
         let row = |name: &str, ns: u64| BenchResult {
             name: name.into(),
             reps: 1,
+            threads: 4,
+            affinity: "0;1;2;3".into(),
             median_ns: ns,
             min_ns: ns,
             max_ns: ns,
@@ -748,6 +942,8 @@ mod tests {
         let row = |name: &str| BenchResult {
             name: name.into(),
             reps: 1,
+            threads: 4,
+            affinity: "0;1;2;3".into(),
             median_ns: 3,
             min_ns: 2,
             max_ns: 4,
@@ -772,6 +968,8 @@ mod tests {
         let result = BenchResult {
             name: SMOKE_MSE_ROUND.into(),
             reps: 1,
+            threads: 1,
+            affinity: "0".into(),
             median_ns: 3,
             min_ns: 2,
             max_ns: 4,
@@ -798,7 +996,7 @@ mod tests {
     #[test]
     fn unknown_bench_is_an_error() {
         assert!(matches!(
-            run_bench("nope".into(), 1),
+            run_bench("nope".into(), 1, BENCH_THREADS),
             Err(AnymoneError::UnknownBench(_))
         ));
     }

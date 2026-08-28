@@ -45,8 +45,12 @@ import net.flashbots.anymone.ffi.MobileScheme
 import net.flashbots.anymone.ffi.benchNames
 import net.flashbots.anymone.ffi.benchReportCsv
 import net.flashbots.anymone.ffi.benchReps
+import net.flashbots.anymone.ffi.benchThreads
 import net.flashbots.anymone.ffi.clientRoleMedianNs
+import net.flashbots.anymone.ffi.coreSweepReportCsv
+import net.flashbots.anymone.ffi.coreSweepThreads
 import net.flashbots.anymone.ffi.runBench
+import net.flashbots.anymone.ffi.runCoreBench
 import net.flashbots.anymone.ffi.runSmoke
 import net.flashbots.anymone.ffi.smokeNames
 import net.flashbots.anymone.ffi.smokeReportCsv
@@ -70,6 +74,12 @@ private enum class Screen {
     BENCH,
     ROOM,
     ATTEST,
+}
+
+private enum class BenchMode {
+    BENCHMARK,
+    CORE_SWEEP,
+    SMOKE,
 }
 
 @Composable
@@ -138,7 +148,7 @@ private fun BenchScreen() {
     val context = LocalContext.current
     var results by remember { mutableStateOf(listOf<BenchResult>()) }
     var running by remember { mutableStateOf<String?>(null) }
-    var smokeMode by remember { mutableStateOf(false) }
+    var benchMode by remember { mutableStateOf(BenchMode.BENCHMARK) }
 
     SectionLabel("01", "bench", "client hot paths")
     Text(
@@ -151,7 +161,7 @@ private fun BenchScreen() {
     Spacer(Modifier.height(14.dp))
     HouseButton("smoke 4×10", outline = true, enabled = running == null) {
         scope.launch {
-            smokeMode = true
+            benchMode = BenchMode.SMOKE
             results = emptyList()
             for (name in smokeNames()) {
                 running = name
@@ -161,13 +171,27 @@ private fun BenchScreen() {
         }
     }
     Spacer(Modifier.height(8.dp))
-    HouseButton(running?.let { "running $it" } ?: "run all", enabled = running == null) {
+    HouseButton("core sweep 1·2·4·8", outline = true, enabled = running == null) {
         scope.launch {
-            smokeMode = false
+            benchMode = BenchMode.CORE_SWEEP
+            results = emptyList()
+            for (threads in coreSweepThreads()) {
+                running = "$threads cores"
+                results = results + withContext(Dispatchers.Default) { runCoreBench(threads) }
+            }
+            running = null
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    HouseButton(running?.let { "running $it" } ?: "run all · ${benchThreads()} cores", enabled = running == null) {
+        scope.launch {
+            benchMode = BenchMode.BENCHMARK
             results = emptyList()
             for (name in benchNames()) {
                 running = name
-                results = results + withContext(Dispatchers.Default) { runBench(name, benchReps(name)) }
+                results = results + withContext(Dispatchers.Default) {
+                    runBench(name, benchReps(name), benchThreads())
+                }
             }
             running = null
         }
@@ -202,16 +226,22 @@ private fun BenchScreen() {
         }
         Spacer(Modifier.height(10.dp))
         HouseButton("export csv", outline = true) {
-            val report = if (smokeMode) {
-                smokeReportCsv(
+            val report = when (benchMode) {
+                BenchMode.SMOKE -> smokeReportCsv(
                     results,
                     "android",
                     "${Build.MANUFACTURER} ${Build.MODEL}",
                     "Android ${Build.VERSION.RELEASE} SDK ${Build.VERSION.SDK_INT}",
                     "${Build.FINGERPRINT}; app ${BuildConfig.VERSION_NAME}",
                 )
-            } else {
-                benchReportCsv(
+                BenchMode.CORE_SWEEP -> coreSweepReportCsv(
+                    results,
+                    "android",
+                    "${Build.MANUFACTURER} ${Build.MODEL}",
+                    "Android ${Build.VERSION.RELEASE} SDK ${Build.VERSION.SDK_INT}",
+                    "${Build.FINGERPRINT}; app ${BuildConfig.VERSION_NAME}",
+                )
+                BenchMode.BENCHMARK -> benchReportCsv(
                     results,
                     "android",
                     "${Build.MANUFACTURER} ${Build.MODEL}",

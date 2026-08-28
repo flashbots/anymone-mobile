@@ -2,12 +2,18 @@ import AnymoneKit
 import Darwin
 import SwiftUI
 
+private enum BenchmarkMode {
+    case benchmark
+    case coreSweep
+    case smoke
+}
+
 /// The first thing to measure on a handset: whether a client's per-round crypto
 /// fits the round budget. Needs no network and no accounts.
 struct BenchmarkView: View {
     @State private var results: [BenchResult] = []
     @State private var running: String?
-    @State private var smokeMode = false
+    @State private var mode = BenchmarkMode.benchmark
 
     /// Committee default `public_round_ms`, kept as the reference to report
     /// against.
@@ -33,7 +39,13 @@ struct BenchmarkView: View {
         .buttonStyle(HouseButton(outline: true))
         .disabled(running != nil)
 
-        Button(running.map { "running \($0)" } ?? "run all") {
+        Button("core sweep 1·2·4·8") {
+            Task { await runCoreSweep() }
+        }
+        .buttonStyle(HouseButton(outline: true))
+        .disabled(running != nil)
+
+        Button(running.map { "running \($0)" } ?? "run all · \(benchThreads()) cores") {
             Task { await runAll() }
         }
         .buttonStyle(HouseButton())
@@ -73,13 +85,13 @@ struct BenchmarkView: View {
     }
 
     private func runAll() async {
-        smokeMode = false
+        mode = .benchmark
         results = []
         for name in benchNames() {
             running = name
             // Off the main actor: each bench is CPU-bound for up to seconds.
             let r = await Task.detached(priority: .userInitiated) {
-                try? runBench(name: name, reps: benchReps(name: name))
+                try? runBench(name: name, reps: benchReps(name: name), threads: benchThreads())
             }.value
             if let r { results.append(r) }
         }
@@ -87,12 +99,25 @@ struct BenchmarkView: View {
     }
 
     private func runSmokeAll() async {
-        smokeMode = true
+        mode = .smoke
         results = []
         for name in smokeNames() {
             running = name
             let r = await Task.detached(priority: .userInitiated) {
                 try? runSmoke(name: name)
+            }.value
+            if let r { results.append(r) }
+        }
+        running = nil
+    }
+
+    private func runCoreSweep() async {
+        mode = .coreSweep
+        results = []
+        for threads in coreSweepThreads() {
+            running = "\(threads) cores"
+            let r = await Task.detached(priority: .userInitiated) {
+                try? runCoreBench(threads: threads)
             }.value
             if let r { results.append(r) }
         }
@@ -125,13 +150,20 @@ struct BenchmarkView: View {
             device: hardwareModel(),
             os: "\(device.systemName) \(device.systemVersion)",
             build: "app \(version)")
-        return smokeMode
-            ? smokeReportCsv(
+        switch mode {
+        case .smoke:
+            return smokeReportCsv(
                 results: args.results, env: args.env, device: args.device, os: args.os,
                 build: args.build)
-            : benchReportCsv(
+        case .coreSweep:
+            return coreSweepReportCsv(
                 results: args.results, env: args.env, device: args.device, os: args.os,
                 build: args.build)
+        case .benchmark:
+            return benchReportCsv(
+                results: args.results, env: args.env, device: args.device, os: args.os,
+                build: args.build)
+        }
     }
 
     private func hardwareModel() -> String {

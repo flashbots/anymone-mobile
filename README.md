@@ -28,7 +28,7 @@ android              :core (bindings + .so) and :app (Compose)
 The crate depends on anymone as a pinned git dependency:
 
 ```
-ssh://git@github.com/flashbots/anymone  rev 1f85972
+ssh://git@github.com/flashbots/anymone  rev eeae218
 ```
 
 That revision carries the `tee` module this crate's prover plugs into. Core
@@ -40,16 +40,43 @@ attested-subnets lands there.
 
 The Bench screen measures every client-owned direct and RS phase for Prony, an
 MSE encoding microbenchmark, and the full Anymone Prony round. Each operation
-gets one untimed warmup and five measured samples.
+gets one untimed warmup. Protocol operations use five measured samples, setup
+uses three, and ECDH and signing use 200.
+
+The detailed suite runs on four workers pinned to the four highest-frequency
+allowed physical cores. `Core sweep 1·2·4·8` measures the full Prony client
+round at each width using three samples plus one untimed warmup. Its CSV carries
+`mode=core-sweep` and is not accepted by the merge tool.
 
 `Smoke 4×10` is the emulator lane: one Prony round, one MSE round, ECDH and
 signing at 4 servers and 10 expected messages. Each runs once without a warmup.
 Smoke CSVs carry `mode=smoke` and the merge tool rejects them.
+
+For the same core sweep on a desktop, in the background:
+
+```sh
+nohup cargo run --release -p anymone-ffi --bin panetiere-mobile-bench -- \
+  desktop-core-sweep.csv >desktop-core-sweep.log 2>&1 &
+```
+
+This uses the handset benchmark cell: Prony, 8 servers, 50 expected messages,
+1 KB input, 7 KAHE polys and RS 6/8. Workers are pinned to the fastest allowed
+non-SMT cores first. Restrict the candidate CPUs with `taskset` when needed.
 Export writes the cell identity, Android/iOS environment, hardware, OS, build,
 Rayon width, CPU affinity and timing spread to CSV.
 
-Run the matching cell in Panetiere, then replace that host row's client timings
-and recompute its composed and projected columns:
+Run the matching cell in Panetiere. The host sweep's payload knob uses 36-bit
+MSE symbols; `248` maps to the mobile channel's 256 35-bit Prony symbols. The
+legacy `rs_dgt_embed` CSV column now contains direct RNS encryption time.
+
+```sh
+SWEEP_SERVERS=8 SWEEP_CLIENTS=50x50 SWEEP_PAYLOAD_SYMBOLS=248 \
+SWEEP_RS=6x8 SWEEP_SCHED_BYTES= BENCH_CSV=host.csv \
+  ./target/release/panetiere_scaling
+```
+
+Then replace that host row's client timings and recompute its composed and
+projected columns:
 
 ```sh
 cargo run --release -p anymone-ffi --bin panetiere-mobile-merge -- \

@@ -174,7 +174,7 @@ final class Session: ObservableObject {
     func send(_ text: String) async {
         guard let pipe else { return }
         do {
-            try await pipe.send(payload: Array(text.utf8))
+            try await pipe.send(payload: Data(text.utf8))
             status = "queued · one message leaves per round"
         } catch {
             status = "send failed: \(error)"
@@ -207,9 +207,9 @@ final class Session: ObservableObject {
 }
 
 extension String {
-    init(decoding bytes: [UInt8]) {
+    init(decoding bytes: Data) {
         self =
-            String(data: Data(bytes), encoding: .utf8)
+            String(data: bytes, encoding: .utf8)
             ?? bytes.map { String($0) }.joined(separator: " ")
     }
 }
