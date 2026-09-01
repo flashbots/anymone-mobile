@@ -12,8 +12,8 @@ on:
         type: choice
         default: both
         options: [both, android, ios]
-      testflight:
-        description: upload a TestFlight build
+      archive:
+        description: publish a Release archive for the TestFlight lane
         type: boolean
         default: true
 
@@ -124,16 +124,15 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             ARCHS=arm64 CODE_SIGNING_ALLOWED=NO
 
-      - name: Upload to TestFlight
-        if: inputs.testflight
+      # Signing and the TestFlight upload happen in a separate repo holding the
+      # Apple credentials; it takes this artifact. See scripts/archive-ios.sh.
+      - name: Release archive
+        if: inputs.archive
         env:
           BUILD_NUMBER: ${{ github.run_number }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
-          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
-          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
-          IOS_PROFILE_NAME: ${{ secrets.IOS_PROFILE_NAME }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
-        run: ./scripts/testflight.sh
+        run: ./scripts/archive-ios.sh
+      - uses: actions/upload-artifact@v4
+        if: inputs.archive
+        with:
+          name: AnymoneApp.xcarchive.tar.gz
+          path: ios/AnymoneApp/build/AnymoneApp.xcarchive.tar.gz

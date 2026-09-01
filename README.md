@@ -90,9 +90,12 @@ measurements remain unchanged.
 ## Getting a build onto an iPhone
 
 The iOS build runs on a macOS CI runner and ships to TestFlight; installs come
-over the air. Push to `main`, or run the workflow manually, and
-`scripts/testflight.sh` archives with manual signing and uploads via the App
-Store Connect API. Secrets it needs are listed at the top of that script.
+over the air. This repo goes as far as the archive: `scripts/archive-ios.sh`
+produces an ad-hoc-signed Release `.xcarchive` and CI publishes it as
+`AnymoneApp.xcarchive.tar.gz`. Signing it with the distribution certificate and
+uploading it through the App Store Connect API happen in the separate
+`apple-store-workflows` repo, which is where the Apple credentials live — none of
+them are needed here.
 
 Because TestFlight builds attest in App Attest's **production** environment, the
 relay's `AppAttestPolicy` must set `production = true`. The `development`
@@ -137,9 +140,11 @@ quota irrelevant.
 
 ## What each platform still needs
 
-- **iOS**: Apple Developer org enrolment, an App ID with the App Attest
-  capability, an App Store distribution cert and provisioning profile for the
-  TestFlight lane, and the team ID in the relay's `AppAttestPolicy`. App Attest
+- **iOS**: Apple Developer enrolment, an App ID with the App Attest capability, an
+  App Store distribution cert and provisioning profile, and the team ID in the
+  relay's `AppAttestPolicy`. This CI only archives (`scripts/archive-ios.sh`,
+  ad-hoc signed); the distribution cert and App Store Connect key live in the
+  `apple-store-workflows` repo, which signs that archive and uploads it. App Attest
   does not run on the simulator — the fetcher reports `Unavailable` there and the
   client falls back to open subnets.
 - **Android**: nothing, for now. The Attest screen uses **hardware key
