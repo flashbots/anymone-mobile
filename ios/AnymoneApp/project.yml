@@ -2,7 +2,7 @@
 # Kept as YAML because the project is generated in CI, not edited locally.
 name: AnymoneApp
 options:
-  bundleIdPrefix: net.flashbots
+  bundleIdPrefix: net.panetiere
   deploymentTarget:
     # 16 for ShareLink, which exports the benchmark CSV.
     iOS: "16.0"
@@ -25,7 +25,7 @@ targets:
         # App Attest attests under the team that signs the build, and the relay
         # policy pins team_id.bundle_id — renaming either is a signed
         # network-config change.
-        PRODUCT_BUNDLE_IDENTIFIER: net.flashbots.anymone
+        PRODUCT_BUNDLE_IDENTIFIER: net.panetiere.dev
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.9"
