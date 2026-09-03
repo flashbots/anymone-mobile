@@ -18,8 +18,6 @@ const MAX_AGE_ROUNDS: u64 = tee::DEFAULT_VALIDITY_ROUNDS / 2;
 pub enum MobileScheme {
     PlayIntegrity,
     AppAttest,
-    /// Android hardware key attestation: verified offline against Google's
-    /// public root, so it needs no Play Console and no install through Play.
     AndroidKeyAttestation,
 }
 

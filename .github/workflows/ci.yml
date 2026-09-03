@@ -107,13 +107,15 @@ jobs:
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
       - uses: Swatinem/rust-cache@v2
-      - name: XCFramework + bindings
-        run: ./scripts/build-ios.sh
-      - uses: actions/upload-artifact@v4
         with:
-          name: AnymoneFFI.xcframework
-          path: ios/AnymoneKit/AnymoneFFI.xcframework
+          # Off by default, so a failure in xcodebuild discards the cargo cache.
+          cache-on-failure: true
+      - name: XCFramework + bindings
+        env:
+          TARGETS: ${{ inputs.archive && 'aarch64-apple-ios' || 'aarch64-apple-ios aarch64-apple-ios-sim' }}
+        run: ./scripts/build-ios.sh
       - name: Build the app for the simulator
+        if: ${{ !inputs.archive }}
         working-directory: ios/AnymoneApp
         run: |
           brew install xcodegen

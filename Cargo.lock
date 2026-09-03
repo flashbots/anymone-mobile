@@ -128,7 +128,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anymone-core"
 version = "0.0.1"
-source = "git+ssh://git@github.com/flashbots/anymone?rev=eeae218fda1403d6ce7fcbac2befca3c2654a5d2#eeae218fda1403d6ce7fcbac2befca3c2654a5d2"
+source = "git+ssh://git@github.com/flashbots/anymone?rev=49a2d7710a5289ebc2bb0cef5717c1a869cff3d0#49a2d7710a5289ebc2bb0cef5717c1a869cff3d0"
 dependencies = [
  "adcnet",
  "aes-gcm",
@@ -2844,7 +2844,7 @@ dependencies = [
 [[package]]
 name = "panetiere"
 version = "0.1.0"
-source = "git+https://github.com/flashbots/panetiere?rev=e5c9cdf033b4873ee3a97210d97b37f435c5f573#e5c9cdf033b4873ee3a97210d97b37f435c5f573"
+source = "git+https://github.com/flashbots/panetiere?rev=94eac72385ca73f615b4f97861fcf7a56a4a67ab#94eac72385ca73f615b4f97861fcf7a56a4a67ab"
 dependencies = [
  "aes-gcm",
  "chipmunk_code",

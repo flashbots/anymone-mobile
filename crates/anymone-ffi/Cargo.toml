@@ -11,8 +11,8 @@ name = "anymone_ffi"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
-anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "eeae218fda1403d6ce7fcbac2befca3c2654a5d2" }
-panetiere = { git = "https://github.com/flashbots/panetiere", rev = "e5c9cdf033b4873ee3a97210d97b37f435c5f573" }
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "49a2d7710a5289ebc2bb0cef5717c1a869cff3d0" }
+panetiere = { git = "https://github.com/flashbots/panetiere", rev = "94eac72385ca73f615b4f97861fcf7a56a4a67ab" }
 rand_chacha = "0.3"
 rayon = "1"
 libc = "0.2"
@@ -26,7 +26,7 @@ tracing = "0.1"
 [dev-dependencies]
 # mobile-attest so the tests drive the real platform verifiers, test-util for
 # their minters.
-anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "eeae218fda1403d6ce7fcbac2befca3c2654a5d2", features = [
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "49a2d7710a5289ebc2bb0cef5717c1a869cff3d0", features = [
     "test-util",
     "mobile-attest",
 ] }
