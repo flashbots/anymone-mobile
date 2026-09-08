@@ -136,11 +136,11 @@ jobs:
         env:
           TARGETS: ${{ inputs.archive && 'aarch64-apple-ios' || 'aarch64-apple-ios aarch64-apple-ios-sim' }}
         run: ./scripts/build-ios.sh
+      - run: brew install xcodegen
       - name: Build the app for the simulator
         if: ${{ !inputs.archive }}
         working-directory: ios/AnymoneApp
         run: |
-          brew install xcodegen
           xcodegen generate
           # ARCHS pins the one simulator slice build-ios.sh produces; a generic
           # destination would also demand x86_64.
