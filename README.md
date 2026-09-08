@@ -1,8 +1,8 @@
 # anymone-mobile
 
-Anymone clients on iOS and Android: one Rust crate (`crates/anymone-ffi`) wrapping
-`anymone-core` behind UniFFI, plus a SwiftUI app and an Android skeleton over the
-generated bindings.
+Anymone clients on iOS and Android: mobile packaging, platform adapters, a
+SwiftUI app and an Android skeleton over the UniFFI bindings. The Rust FFI source
+lives in the adjacent `anymone` repository.
 
 Three screens, in the order they became useful:
 
@@ -14,8 +14,6 @@ Three screens, in the order they became useful:
 ## Layout
 
 ```
-crates/anymone-ffi   the FFI surface: AnymoneClient, AnymonePipe,
-                     AttestationTokenFetcher, run_bench
 scripts/build-ios.sh     staticlibs -> AnymoneFFI.xcframework + Swift bindings
 scripts/build-android.sh cargo-ndk -> jniLibs + Kotlin bindings
 ios/AnymoneKit       SwiftPM package wrapping the xcframework
@@ -23,18 +21,12 @@ ios/AnymoneApp       the app (project.yml -> `xcodegen generate`)
 android              :core (bindings + .so) and :app (Compose)
 ```
 
-## The anymone dependency
+## The anymone source
 
-The crate depends on anymone as a pinned git dependency:
-
-```
-ssh://git@github.com/flashbots/anymone  rev eeae218
-```
-
-That revision carries the `tee` module this crate's prover plugs into. Core
-changes reach the mobile build only once they are pushed and the `rev` in
-`crates/anymone-ffi/Cargo.toml` is bumped. Repoint it at a `main` rev once
-attested-subnets lands there.
+Build scripts use `../anymone/Cargo.toml` by default and build the
+`anymone-ffi` workspace member from there. Set `ANYMONE_DIR` or
+`ANYMONE_MANIFEST` to use another checkout. CI checks out the revision selected
+by its `anymone_ref` input.
 
 ## Merging handset benchmarks into Panetiere
 
@@ -55,7 +47,8 @@ Smoke CSVs carry `mode=smoke` and the merge tool rejects them.
 For the same core sweep on a desktop, in the background:
 
 ```sh
-nohup cargo run --release -p anymone-ffi --bin panetiere-mobile-bench -- \
+nohup cargo run --manifest-path tools/panetiere-mobile/Cargo.toml --release \
+  --bin panetiere-mobile-bench -- \
   desktop-core-sweep.csv >desktop-core-sweep.log 2>&1 &
 ```
 
@@ -79,7 +72,8 @@ Then replace that host row's client timings and recompute its composed and
 projected columns:
 
 ```sh
-cargo run --release -p anymone-ffi --bin panetiere-mobile-merge -- \
+cargo run --manifest-path tools/panetiere-mobile/Cargo.toml --release \
+  --bin panetiere-mobile-merge -- \
   mobile.csv host.csv mobile-merged.csv
 ```
 

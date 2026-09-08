@@ -7,10 +7,13 @@ let package = Package(
     name: "AnymoneKit",
     platforms: [.iOS(.v16)],
     products: [
-        .library(name: "AnymoneKit", targets: ["AnymoneKit"])
+        .library(name: "AnymoneKit", targets: ["AnymoneKit"]),
+        .library(name: "AnymoneBenchKit", targets: ["AnymoneBenchKit"]),
     ],
     targets: [
         .binaryTarget(name: "AnymoneFFI", path: "AnymoneFFI.xcframework"),
+        .binaryTarget(name: "AnymoneBenchFFI", path: "AnymoneBenchFFI.xcframework"),
         .target(name: "AnymoneKit", dependencies: ["AnymoneFFI"]),
+        .target(name: "AnymoneBenchKit", dependencies: ["AnymoneBenchFFI"]),
     ]
 )

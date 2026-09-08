@@ -1,9 +1,7 @@
 name: ci
 
 # anymone and adcnet-rs are private, and a deploy key opens only the repository
-# it belongs to, so each needs its own in the agent before cargo fetches. The
-# anymone revision the mobile crate builds against is pinned in
-# crates/anymone-ffi/Cargo.toml.
+# it belongs to, so each needs its own checkout or vendored source.
 on:
   workflow_dispatch:
     inputs:
@@ -16,9 +14,14 @@ on:
         description: publish a Release archive for the TestFlight lane
         type: boolean
         default: true
+      anymone_ref:
+        description: anymone revision containing anymone-ffi
+        type: string
+        default: 9651e0d63ae92ba2b77a958525a9183964b0cb2f
 
 env:
   CARGO_TERM_COLOR: always
+  ANYMONE_DIR: ${{ github.workspace }}/anymone-source
   # cargo's built-in libgit2 stops at the first key the agent offers that
   # GitHub rejects, so with one deploy key per private repo it never reaches
   # the second. The git CLI tries them all.
@@ -31,6 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: flashbots/anymone
+          ref: ${{ inputs.anymone_ref }}
+          path: anymone-source
+          ssh-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
@@ -41,13 +50,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       # Every target reports, so one broken test does not hide the next.
-      - run: cargo test --no-fail-fast -p anymone-ffi
+      - run: cargo test --manifest-path "$ANYMONE_DIR/Cargo.toml" --no-fail-fast -p anymone-ffi
+      - run: cargo test --no-fail-fast -p anymone-bench
 
   host-and-android:
     if: inputs.platform != 'ios'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: flashbots/anymone
+          ref: ${{ inputs.anymone_ref }}
+          path: anymone-source
+          ssh-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
@@ -96,6 +112,12 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: flashbots/anymone
+          ref: ${{ inputs.anymone_ref }}
+          path: anymone-source
+          ssh-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}

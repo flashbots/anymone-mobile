@@ -1,0 +1,5 @@
+[bindings.kotlin]
+package_name = "net.flashbots.anymone.bench"
+
+[bindings.swift]
+module_name = "AnymoneBenchKit"

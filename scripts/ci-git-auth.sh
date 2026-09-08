@@ -6,6 +6,7 @@
 set -euo pipefail
 
 : "${ADCNET_DEPLOY_KEY:?}"
+ANYMONE_DIR=${ANYMONE_DIR:-../anymone}
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
@@ -14,7 +15,7 @@ chmod 600 ~/.ssh/adcnet
 ssh-keyscan github.com >>~/.ssh/known_hosts 2>/dev/null
 
 # Whatever Cargo.lock resolved, so the clone cannot drift from anymone's pin.
-rev=$(grep -om1 'adcnet-rs?rev=[0-9a-f]\{40\}' Cargo.lock | cut -d= -f2)
+rev=$(grep -om1 'adcnet-rs?rev=[0-9a-f]\{40\}' "$ANYMONE_DIR/Cargo.lock" | cut -d= -f2)
 GIT_SSH_COMMAND="ssh -i ~/.ssh/adcnet -o IdentitiesOnly=yes" \
   git clone --quiet ssh://git@github.com/flashbots/adcnet-rs ../adcnet-rs
 git -C ../adcnet-rs checkout --quiet "$rev"

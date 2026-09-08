@@ -1,4 +1,4 @@
-use anymone_ffi::{core_sweep_report_csv, core_sweep_threads, run_core_bench};
+use anymone_bench::{core_sweep_report_csv, core_sweep_threads, run_core_bench};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();

@@ -1,0 +1,17 @@
+[package]
+name = "panetiere-mobile-tools"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anymone-bench = { path = "../../crates/anymone-bench" }
+panetiere = { git = "https://github.com/flashbots/panetiere", rev = "94eac72385ca73f615b4f97861fcf7a56a4a67ab" }
+
+[[bin]]
+name = "panetiere-mobile-bench"
+path = "src/bin/panetiere-mobile-bench.rs"
+
+[[bin]]
+name = "panetiere-mobile-merge"
+path = "src/bin/panetiere-mobile-merge.rs"

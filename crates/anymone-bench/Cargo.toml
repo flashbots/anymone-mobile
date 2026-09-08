@@ -1,0 +1,19 @@
+[package]
+name = "anymone-bench"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "anymone_bench"
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "9651e0d63ae92ba2b77a958525a9183964b0cb2f" }
+libc = "0.2"
+once_cell = "1"
+panetiere = { git = "https://github.com/flashbots/panetiere", rev = "94eac72385ca73f615b4f97861fcf7a56a4a67ab" }
+rand_chacha = "0.3"
+rayon = "1"
+thiserror = "1"
+uniffi = "0.29"

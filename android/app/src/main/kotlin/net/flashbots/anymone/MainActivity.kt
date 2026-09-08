@@ -40,20 +40,20 @@ import kotlinx.coroutines.withContext
 import net.flashbots.anymone.ffi.AnymoneClient
 import net.flashbots.anymone.ffi.AnymonePipe
 import net.flashbots.anymone.ffi.AttestationStatus
-import net.flashbots.anymone.ffi.BenchResult
 import net.flashbots.anymone.ffi.MobileScheme
-import net.flashbots.anymone.ffi.benchNames
-import net.flashbots.anymone.ffi.benchReportCsv
-import net.flashbots.anymone.ffi.benchReps
-import net.flashbots.anymone.ffi.benchThreads
-import net.flashbots.anymone.ffi.clientRoleMedianNs
-import net.flashbots.anymone.ffi.coreSweepReportCsv
-import net.flashbots.anymone.ffi.coreSweepThreads
-import net.flashbots.anymone.ffi.runBench
-import net.flashbots.anymone.ffi.runCoreBench
-import net.flashbots.anymone.ffi.runSmoke
-import net.flashbots.anymone.ffi.smokeNames
-import net.flashbots.anymone.ffi.smokeReportCsv
+import net.flashbots.anymone.bench.BenchResult
+import net.flashbots.anymone.bench.benchNames
+import net.flashbots.anymone.bench.benchReportCsv
+import net.flashbots.anymone.bench.benchReps
+import net.flashbots.anymone.bench.benchThreads
+import net.flashbots.anymone.bench.clientRoleMedianNs
+import net.flashbots.anymone.bench.coreSweepReportCsv
+import net.flashbots.anymone.bench.coreSweepThreads
+import net.flashbots.anymone.bench.runBench
+import net.flashbots.anymone.bench.runCoreBench
+import net.flashbots.anymone.bench.runSmoke
+import net.flashbots.anymone.bench.smokeNames
+import net.flashbots.anymone.bench.smokeReportCsv
 
 /** Committee default public_round_ms, kept as the reference to report against. */
 private const val ROUND_BUDGET_NS = 4_000_000_000L

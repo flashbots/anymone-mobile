@@ -1,6 +1,10 @@
 [workspace]
 resolver = "2"
-members = ["crates/anymone-ffi"]
+members = [
+    "crates/anymone-bench",
+    "tools/panetiere-mobile",
+    "tools/uniffi-bindgen",
+]
 
 [profile.dev]
 opt-level = 1

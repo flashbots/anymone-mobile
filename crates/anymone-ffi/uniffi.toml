@@ -1,5 +1,0 @@
-[bindings.kotlin]
-package_name = "net.flashbots.anymone.ffi"
-
-[bindings.swift]
-module_name = "AnymoneKit"

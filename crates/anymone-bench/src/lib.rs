@@ -27,7 +27,16 @@ use panetiere::sig::SigningKey;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
-use crate::AnymoneError;
+#[derive(Debug, thiserror::Error, uniffi::Error)]
+#[uniffi(flat_error)]
+pub enum BenchError {
+    #[error("benchmark configuration: {0}")]
+    Config(String),
+    #[error("unknown benchmark: {0}")]
+    UnknownBench(String),
+}
+
+uniffi::setup_scaffolding!();
 
 /// The sweep cell this mirrors: 8 servers, 50 expected messages a round, 1 KB
 /// payloads. ξ is derived from the message size, so the size is what pins the
@@ -180,11 +189,11 @@ pub fn client_role_median_ns(results: Vec<BenchResult>) -> u64 {
 /// CPU-bound for seconds (`panetiere_setup` especially). Run off the UI thread,
 /// one benchmark at a time.
 #[uniffi::export]
-pub fn run_bench(name: String, reps: u32, threads: u32) -> Result<BenchResult, AnymoneError> {
+pub fn run_bench(name: String, reps: u32, threads: u32) -> Result<BenchResult, BenchError> {
     run_in_pool(threads, || run_bench_inner(name, reps))
 }
 
-fn run_bench_inner(name: String, reps: u32) -> Result<BenchResult, AnymoneError> {
+fn run_bench_inner(name: String, reps: u32) -> Result<BenchResult, BenchError> {
     let reps = reps.max(1) as usize;
     if let Some((ch, pp, phase)) = client_phase(&name) {
         return Ok(result(name, measure_client_phase(reps, ch, pp, phase)));
@@ -220,17 +229,17 @@ fn run_bench_inner(name: String, reps: u32) -> Result<BenchResult, AnymoneError>
             let msg = [0x5au8; 32];
             measure(reps, Identity::generate, |identity, _| identity.sign(&msg))
         }
-        _ => return Err(AnymoneError::UnknownBench(name)),
+        _ => return Err(BenchError::UnknownBench(name)),
     };
     Ok(result(name, ns))
 }
 
 #[uniffi::export]
-pub fn run_smoke(name: String) -> Result<BenchResult, AnymoneError> {
+pub fn run_smoke(name: String) -> Result<BenchResult, BenchError> {
     run_in_pool(1, || run_smoke_inner(name))
 }
 
-fn run_smoke_inner(name: String) -> Result<BenchResult, AnymoneError> {
+fn run_smoke_inner(name: String) -> Result<BenchResult, BenchError> {
     let ns = match name.as_str() {
         SMOKE_PRONY_ROUND => {
             let payload = vec![0xab; smoke_prony_channel_params().max_payload_bytes()];
@@ -258,15 +267,15 @@ fn run_smoke_inner(name: String) -> Result<BenchResult, AnymoneError> {
             let msg = [0x5au8; 32];
             measure_once(Identity::generate, |identity, _| identity.sign(&msg))
         }
-        _ => return Err(AnymoneError::UnknownBench(name)),
+        _ => return Err(BenchError::UnknownBench(name)),
     };
     Ok(result(name, ns))
 }
 
 #[uniffi::export]
-pub fn run_core_bench(threads: u32) -> Result<BenchResult, AnymoneError> {
+pub fn run_core_bench(threads: u32) -> Result<BenchResult, BenchError> {
     if !CORE_SWEEP_THREADS.contains(&threads) {
-        return Err(AnymoneError::UnknownBench(format!("core count {threads}")));
+        return Err(BenchError::UnknownBench(format!("core count {threads}")));
     }
     run_in_pool(threads, || {
         let payload = vec![0xab; channel_params().max_payload_bytes()];
@@ -295,8 +304,8 @@ fn result(name: String, mut ns: Vec<u64>) -> BenchResult {
 
 fn run_in_pool(
     threads: u32,
-    op: impl FnOnce() -> Result<BenchResult, AnymoneError> + Send,
-) -> Result<BenchResult, AnymoneError> {
+    op: impl FnOnce() -> Result<BenchResult, BenchError> + Send,
+) -> Result<BenchResult, BenchError> {
     let threads = threads.max(1) as usize;
     let cpus = performance_cpus(threads);
     let affinity = cpus
@@ -331,7 +340,7 @@ fn run_in_pool(
     let builder = rayon::ThreadPoolBuilder::new().num_threads(threads);
     let pool = builder
         .build()
-        .map_err(|e| AnymoneError::Config(format!("benchmark pool: {e}")))?;
+        .map_err(|e| BenchError::Config(format!("benchmark pool: {e}")))?;
     let mut result = pool.install(op)?;
     result.threads = threads as u32;
     #[cfg(any(target_os = "android", target_os = "linux"))]
@@ -997,7 +1006,7 @@ mod tests {
     fn unknown_bench_is_an_error() {
         assert!(matches!(
             run_bench("nope".into(), 1, BENCH_THREADS),
-            Err(AnymoneError::UnknownBench(_))
+            Err(BenchError::UnknownBench(_))
         ));
     }
 }
