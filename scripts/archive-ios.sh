@@ -16,6 +16,11 @@ STAGE=build/testflight
 
 xcodegen generate
 
+# ClangStatCache only pre-indexes the SDK to speed up header lookups, and it
+# fails outright on the runner's Xcode 26.6 / iPhoneOS26.5 pairing. Nothing in
+# the archive depends on it.
+defaults write com.apple.dt.XCBuild EnableSDKStatCaching -bool NO
+
 rm -rf build/AnymoneApp.xcarchive "$STAGE"
 xcodebuild archive \
   -project AnymoneApp.xcodeproj \
@@ -23,6 +28,7 @@ xcodebuild archive \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath build/AnymoneApp.xcarchive \
+  -derivedDataPath build/DerivedData \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \

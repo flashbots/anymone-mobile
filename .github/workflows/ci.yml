@@ -17,7 +17,7 @@ on:
       anymone_ref:
         description: anymone revision containing anymone-ffi
         type: string
-        default: 9651e0d63ae92ba2b77a958525a9183964b0cb2f
+        default: 0913395cefba21ae55b319471b5778462e9e48f7
 
 env:
   CARGO_TERM_COLOR: always

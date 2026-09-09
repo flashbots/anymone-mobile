@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 anymone-bench = { path = "../../crates/anymone-bench" }
-panetiere = { git = "https://github.com/flashbots/panetiere", rev = "94eac72385ca73f615b4f97861fcf7a56a4a67ab" }
+panetiere = { git = "https://github.com/flashbots/panetiere", rev = "dc01b293e0d41a4869739af8b685853ac2c7970c" }
 
 [[bin]]
 name = "panetiere-mobile-bench"
