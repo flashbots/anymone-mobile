@@ -44,14 +44,14 @@ cargo run --manifest-path tools/uniffi-bindgen/Cargo.toml -- generate \
 
 # Xcode wants `module.modulemap`; uniffi emits `<name>FFI.modulemap`.
 HEADERS=gen/swift/headers
-rm -rf "$HEADERS" && mkdir -p "$HEADERS"
-cp gen/swift/*.h "$HEADERS"/
-cat gen/swift/*.modulemap > "$HEADERS/module.modulemap"
+rm -rf "$HEADERS" && mkdir -p "$HEADERS/AnymoneFFI"
+cp gen/swift/*.h "$HEADERS/AnymoneFFI"/
+cat gen/swift/*.modulemap > "$HEADERS/AnymoneFFI/module.modulemap"
 
 BENCH_HEADERS=gen/swift-bench/headers
-rm -rf "$BENCH_HEADERS" && mkdir -p "$BENCH_HEADERS"
-cp gen/swift-bench/*.h "$BENCH_HEADERS"/
-cat gen/swift-bench/*.modulemap > "$BENCH_HEADERS/module.modulemap"
+rm -rf "$BENCH_HEADERS" && mkdir -p "$BENCH_HEADERS/AnymoneBenchFFI"
+cp gen/swift-bench/*.h "$BENCH_HEADERS/AnymoneBenchFFI"/
+cat gen/swift-bench/*.modulemap > "$BENCH_HEADERS/AnymoneBenchFFI/module.modulemap"
 
 OUT=ios/AnymoneKit/AnymoneFFI.xcframework
 BENCH_OUT=ios/AnymoneKit/AnymoneBenchFFI.xcframework
