@@ -1,8 +1,8 @@
 // swift-tools-version:5.9
 import PackageDescription
 
-// AnymoneFFI.xcframework and Sources/AnymoneKit/anymone_ffi.swift are build
-// products of scripts/build-ios.sh, not checked in.
+// XCFrameworks and generated binding sources are build products of
+// scripts/build-ios.sh, not checked in.
 let package = Package(
     name: "AnymoneKit",
     platforms: [.iOS(.v16)],
@@ -11,9 +11,28 @@ let package = Package(
         .library(name: "AnymoneBenchKit", targets: ["AnymoneBenchKit"]),
     ],
     targets: [
-        .binaryTarget(name: "AnymoneFFI", path: "AnymoneFFI.xcframework"),
-        .binaryTarget(name: "AnymoneBenchFFI", path: "AnymoneBenchFFI.xcframework"),
-        .target(name: "AnymoneKit", dependencies: ["AnymoneFFI"]),
-        .target(name: "AnymoneBenchKit", dependencies: ["AnymoneBenchFFI"]),
+        .binaryTarget(
+            name: "AnymoneFFIBinary",
+            path: "AnymoneFFI.xcframework"
+        ),
+        .binaryTarget(
+            name: "AnymoneBenchFFIBinary",
+            path: "AnymoneBenchFFI.xcframework"
+        ),
+        .target(
+            name: "AnymoneKitFFI",
+            dependencies: ["AnymoneFFIBinary"],
+            publicHeadersPath: "include"
+        ),
+        .target(
+            name: "AnymoneBenchKitFFI",
+            dependencies: ["AnymoneBenchFFIBinary"],
+            publicHeadersPath: "include"
+        ),
+        .target(name: "AnymoneKit", dependencies: ["AnymoneKitFFI"]),
+        .target(
+            name: "AnymoneBenchKit",
+            dependencies: ["AnymoneBenchKitFFI"]
+        ),
     ]
 )

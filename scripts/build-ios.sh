@@ -42,16 +42,17 @@ cargo run --manifest-path tools/uniffi-bindgen/Cargo.toml -- generate \
   --library "$BENCH_HOST_LIB" --language swift --out-dir gen/swift-bench --no-format \
   --config crates/anymone-bench/uniffi.toml
 
-# Xcode wants `module.modulemap`; uniffi emits `<name>FFI.modulemap`.
-HEADERS=gen/swift/headers
-rm -rf "$HEADERS" && mkdir -p "$HEADERS/AnymoneFFI"
-cp gen/swift/*.h "$HEADERS/AnymoneFFI"/
-cat gen/swift/*.modulemap > "$HEADERS/AnymoneFFI/module.modulemap"
+# Keep headers out of the XCFrameworks because ProcessXCFramework flattens
+# their module maps into one output directory.
+FFI_TARGET=ios/AnymoneKit/Sources/AnymoneKitFFI
+mkdir -p "$FFI_TARGET/include"
+touch "$FFI_TARGET/ffi.c"
+cp gen/swift/*.h "$FFI_TARGET/include"/
 
-BENCH_HEADERS=gen/swift-bench/headers
-rm -rf "$BENCH_HEADERS" && mkdir -p "$BENCH_HEADERS/AnymoneBenchFFI"
-cp gen/swift-bench/*.h "$BENCH_HEADERS/AnymoneBenchFFI"/
-cat gen/swift-bench/*.modulemap > "$BENCH_HEADERS/AnymoneBenchFFI/module.modulemap"
+BENCH_FFI_TARGET=ios/AnymoneKit/Sources/AnymoneBenchKitFFI
+mkdir -p "$BENCH_FFI_TARGET/include"
+touch "$BENCH_FFI_TARGET/ffi.c"
+cp gen/swift-bench/*.h "$BENCH_FFI_TARGET/include"/
 
 OUT=ios/AnymoneKit/AnymoneFFI.xcframework
 BENCH_OUT=ios/AnymoneKit/AnymoneBenchFFI.xcframework
@@ -60,8 +61,8 @@ rm -rf "$BENCH_OUT"
 SLICES=()
 BENCH_SLICES=()
 for target in $TARGETS; do
-  SLICES+=(-library "target/$target/$PROFILE/libanymone_ffi.a" -headers "$HEADERS")
-  BENCH_SLICES+=(-library "target/$target/$PROFILE/libanymone_bench.a" -headers "$BENCH_HEADERS")
+  SLICES+=(-library "target/$target/$PROFILE/libanymone_ffi.a")
+  BENCH_SLICES+=(-library "target/$target/$PROFILE/libanymone_bench.a")
 done
 xcodebuild -create-xcframework "${SLICES[@]}" -output "$OUT"
 xcodebuild -create-xcframework "${BENCH_SLICES[@]}" -output "$BENCH_OUT"

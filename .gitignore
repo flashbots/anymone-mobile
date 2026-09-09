@@ -2,6 +2,8 @@
 /gen
 ios/AnymoneKit/*.xcframework
 ios/AnymoneKit/Sources/AnymoneKit/AnymoneKit.swift
+ios/AnymoneKit/Sources/AnymoneKitFFI/
+ios/AnymoneKit/Sources/AnymoneBenchKitFFI/
 ios/AnymoneApp/AnymoneApp.xcodeproj
 ios/AnymoneApp/build
 ios/build
