@@ -41,7 +41,7 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
         address = candidates.first(where: { $0.0 == "en0" })?.1 ?? candidates.first?.1 ?? ""
     }
 
-    func start(config: String) async {
+    func start() async {
         guard !running && !starting else { return }
         generation += 1
         let attempt = generation
@@ -49,7 +49,7 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
         status = "starting developer host"
         do {
             let created = try await RemoteProtocolHost.startDeveloper(
-                configJson: config, listenAddress: "\(address):0")
+                listenAddress: "\(address):0")
             guard generation == attempt else { await created.stop(); return }
             host = created
             pairing = try created.pairingJson()
@@ -78,10 +78,11 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
                         guard generation == attempt else { return }
                         if let value = try JSONSerialization.jsonObject(with: Data(state.utf8)) as? [String: Any] {
                             if value["closed"] as? Bool == true { await stop(); return }
-                            participant = value["participant"] as? String ?? ""
-                            let round = value["current_round"] as? NSNumber ?? 0
+                            let client = value["client"] as? [String: Any]
+                            participant = client?["participant"] as? String ?? ""
+                            let round = client?["current_round"] as? NSNumber ?? 0
                             let request = value["next_request"] as? NSNumber ?? 0
-                            status = "\(endpoint) · round \(round) · requests \(request)"
+                            status = client == nil ? "\(endpoint) · waiting for desktop configuration" : "\(endpoint) · round \(round) · requests \(request)"
                         }
                         try await Task.sleep(nanoseconds: 1_000_000_000)
                     } catch {
@@ -130,7 +131,6 @@ private enum RemoteScreenError: Error { case badPairing }
 
 struct RemoteSessionView: View {
     @EnvironmentObject private var remote: RemoteHostModel
-    @AppStorage("remote_host_config") private var config = ""
 
     var body: some View {
         SectionLabel(index: "01", title: "remote", trailing: "developer keys")
@@ -140,13 +140,8 @@ struct RemoteSessionView: View {
             HouseField(placeholder: "LAN IPv4 address", text: $remote.address)
             Button("refresh address") { remote.refreshAddress() }
                 .buttonStyle(HouseButton(outline: true))
-            Text("HOST CONFIGURATION").font(.mono(10, .bold)).foregroundStyle(Ink.lichen)
-            TextEditor(text: $config)
-                .font(.mono(10)).foregroundStyle(Ink.paper)
-                .scrollContentBackground(.hidden)
-                .background(Ink.canopy.opacity(0.55)).frame(height: 190)
-            Button("start developer host") { Task { await remote.start(config: config) } }
-                .buttonStyle(HouseButton()).disabled(config.isEmpty || remote.address.isEmpty)
+            Button("start developer host") { Task { await remote.start() } }
+                .buttonStyle(HouseButton()).disabled(remote.address.isEmpty)
         } else {
             Button("stop") { Task { await remote.stop() } }
                 .buttonStyle(HouseButton(outline: true))

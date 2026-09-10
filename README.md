@@ -175,14 +175,9 @@ For the Remote screen, start the Rust demo from the `anymone` directory:
 cargo run --locked -p anymone-observer -- demo --output target/demo --clients 0
 ```
 
-Wait for `Demo ready`, then export the phone input in another terminal:
-
-```sh
-cargo run --locked -p anymone-remote-session -- export-config --bootstrap target/demo/client.toml --subnet 0 > host-config.json
-```
-
-Paste that JSON into Remote and start the developer host. Save its pairing JSON
-as `pairing.json` on the desktop, then run the separate service backend:
+Wait for `Demo ready`. On the phone's Remote screen, choose the LAN IPv4 address
+and start the developer host. Allow Local Network access on iOS. Save its shared
+pairing JSON as `pairing.json` on the desktop, then run:
 
 ```sh
 cargo run --locked -p anymone-chat -- --config target/demo/client.toml --remote-pairing pairing.json --max-clients 1 --port 8080
@@ -190,8 +185,10 @@ cargo run --locked -p anymone-chat -- --config target/demo/client.toml --remote-
 
 The demo runs ordinary Panetière, committee, relays and chat on the host. It has
 no pairing logic. The desktop backend connects to its loopback network and
-dispatches native protocol actions to the phone over TLS. Compare messages at
-ports 8080 and 7001. Use a fresh output directory and phone session per demo run.
+sends configuration and native protocol actions to the phone over TLS. No
+configuration is entered on the phone. Configuration updates preserve pairing.
+Compare messages at ports 8080 and 7001. Use a fresh output directory per demo run;
+restarting the desktop process requires fresh phone pairing.
 The `anymone-remote-session` README covers Android debug automation, ADB
 forwarding, discovery and standalone action tests.
 

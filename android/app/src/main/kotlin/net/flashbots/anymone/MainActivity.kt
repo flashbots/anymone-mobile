@@ -107,7 +107,7 @@ private enum class BenchMode {
 
 @Composable
 private fun App(dataDir: String, remoteLaunch: Int) {
-    var screen by remember { mutableStateOf(Screen.BENCH) }
+    var screen by remember { mutableStateOf(Screen.REMOTE) }
     LaunchedEffect(remoteLaunch) { if (remoteLaunch > 0) screen = Screen.REMOTE }
     Column(Modifier.fillMaxSize().background(Ink.night)) {
         Brand()

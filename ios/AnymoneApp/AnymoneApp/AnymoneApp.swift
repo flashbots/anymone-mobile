@@ -6,7 +6,7 @@ struct AnymoneApp: App {
     @StateObject private var session = Session()
     @StateObject private var remote = RemoteHostModel()
     @Environment(\.scenePhase) private var scenePhase
-    @State private var tab = Tab.bench
+    @State private var tab = Tab.remote
 
     var body: some Scene {
         WindowGroup {

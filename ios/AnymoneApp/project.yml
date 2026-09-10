@@ -20,10 +20,9 @@ targets:
         product: AnymoneKit
       - package: AnymoneKit
         product: AnymoneBenchKit
-    info:
-      path: AnymoneApp/Info.plist
     settings:
       base:
+        INFOPLIST_FILE: AnymoneApp/Info.plist
         # App Attest attests under the team that signs the build, and the relay
         # policy pins team_id.bundle_id — renaming either is a signed
         # network-config change.

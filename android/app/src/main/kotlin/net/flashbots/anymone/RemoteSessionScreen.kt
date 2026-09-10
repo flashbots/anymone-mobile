@@ -32,7 +32,6 @@ import java.util.UUID
 
 object RemoteHostController {
     var address by mutableStateOf("")
-    var config by mutableStateOf("")
     var status by mutableStateOf("stopped")
         private set
     var participant by mutableStateOf("")
@@ -79,11 +78,10 @@ object RemoteHostController {
         val attempt = generation
         starting = true
         status = "starting developer host"
-        val configuration = config
         val endpoint = "$address:0"
         scope.launch {
             try {
-                val created = RemoteProtocolHost.startDeveloper(configuration, endpoint)
+                val created = RemoteProtocolHost.startDeveloper(endpoint)
                 if (attempt != generation) {
                     created.stop()
                     return@launch
@@ -135,8 +133,10 @@ object RemoteHostController {
                             val state = JSONObject(created.statusJson())
                             if (attempt != generation) break
                             if (state.getBoolean("closed")) { stop(); break }
-                            participant = state.getString("participant")
-                            status = "$boundAddress · round ${state.getLong("current_round")} · requests ${state.getLong("next_request")}"
+                            val client = state.optJSONObject("client")
+                            participant = client?.getString("participant").orEmpty()
+                            status = if (client == null) "$boundAddress · waiting for desktop configuration"
+                                else "$boundAddress · round ${client.getLong("current_round")} · requests ${state.getLong("next_request")}"
                             delay(1000)
                         } catch (error: Exception) {
                             if (attempt == generation) status = "status failed: ${error.message}"
@@ -192,10 +192,7 @@ fun RemoteSessionScreen() {
         OutlinedTextField(remote.address, { remote.address = it },
             label = { Text("LAN IPv4 address") }, modifier = Modifier.fillMaxWidth())
         HouseButton("refresh address", outline = true) { remote.refreshAddress() }
-        OutlinedTextField(remote.config, { remote.config = it },
-            label = { Text("Host configuration JSON") },
-            modifier = Modifier.fillMaxWidth().height(190.dp))
-        HouseButton("start developer host", enabled = remote.config.isNotBlank() && remote.address.isNotBlank()) {
+        HouseButton("start developer host", enabled = remote.address.isNotBlank()) {
             remote.start(context)
         }
     } else {

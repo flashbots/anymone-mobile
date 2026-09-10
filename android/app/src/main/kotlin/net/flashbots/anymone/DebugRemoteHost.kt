@@ -26,9 +26,6 @@ object DebugRemoteHost {
         }
         report(app, "starting")
         try {
-            val file = app.getFileStreamPath("remote-host-config.json")
-            require(file.length() <= 1024 * 1024) { "host configuration exceeds 1 MiB" }
-            remote.config = file.readText()
             remote.address = "127.0.0.1"
             ownsHost = true
             remote.start(
