@@ -1,7 +1,7 @@
 name: ci
 
-# anymone and adcnet-rs are private, and a deploy key opens only the repository
-# it belongs to, so each needs its own checkout or vendored source.
+# anymone is private, so it needs its own checkout plus a key in the agent for
+# the fetch cargo makes over ssh. adcnet-rs is public and fetches anonymously.
 on:
   workflow_dispatch:
     inputs:
@@ -17,15 +17,11 @@ on:
       anymone_ref:
         description: anymone revision containing anymone-ffi
         type: string
-        default: d5b0300752bf7a35f896cc45e7686d51cd7a57d3
+        default: 67874991d86f425c5badffd3ed98a5e017429717
 
 env:
   CARGO_TERM_COLOR: always
   ANYMONE_DIR: ${{ github.workspace }}/anymone-source
-  # cargo's built-in libgit2 stops at the first key the agent offers that
-  # GitHub rejects, so with one deploy key per private repo it never reaches
-  # the second. The git CLI tries them all.
-  CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 jobs:
   # Separate from the build jobs so a failing test is visible as a red job
@@ -43,10 +39,6 @@ jobs:
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
-      - name: Vendor adcnet-rs with its own deploy key
-        env:
-          ADCNET_DEPLOY_KEY: ${{ secrets.ADCNET_DEPLOY_KEY }}
-        run: ./scripts/ci-git-auth.sh
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       # Every target reports, so one broken test does not hide the next.
@@ -67,10 +59,6 @@ jobs:
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
-      - name: Vendor adcnet-rs with its own deploy key
-        env:
-          ADCNET_DEPLOY_KEY: ${{ secrets.ADCNET_DEPLOY_KEY }}
-        run: ./scripts/ci-git-auth.sh
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android
@@ -121,10 +109,6 @@ jobs:
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ANYMONE_DEPLOY_KEY }}
-      - name: Vendor adcnet-rs with its own deploy key
-        env:
-          ADCNET_DEPLOY_KEY: ${{ secrets.ADCNET_DEPLOY_KEY }}
-        run: ./scripts/ci-git-auth.sh
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios,aarch64-apple-ios-sim

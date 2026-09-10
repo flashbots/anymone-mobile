@@ -64,9 +64,31 @@ private const val ROUND_CEILING_NS = 60_000_000_000L
 private const val ROUND_BENCH = "anymone_panetiere_round"
 
 class MainActivity : ComponentActivity() {
+    private var remoteLaunch by mutableStateOf(0)
+
+    private fun handleRemoteIntent(intent: Intent) {
+        if (DebugRemoteHost.start(this, intent)) {
+            remoteLaunch += 1
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleRemoteIntent(intent)
+    }
+
+    override fun onStop() {
+        RemoteHostController.stop()
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { AnymoneTheme { App(filesDir.path) } }
+        if (savedInstanceState == null) handleRemoteIntent(intent)
+        setContent { AnymoneTheme { App(filesDir.path, remoteLaunch) } }
     }
 }
 
@@ -74,6 +96,7 @@ private enum class Screen {
     BENCH,
     ROOM,
     ATTEST,
+    REMOTE,
 }
 
 private enum class BenchMode {
@@ -83,8 +106,9 @@ private enum class BenchMode {
 }
 
 @Composable
-private fun App(dataDir: String) {
+private fun App(dataDir: String, remoteLaunch: Int) {
     var screen by remember { mutableStateOf(Screen.BENCH) }
+    LaunchedEffect(remoteLaunch) { if (remoteLaunch > 0) screen = Screen.REMOTE }
     Column(Modifier.fillMaxSize().background(Ink.night)) {
         Brand()
         Hairline()
@@ -93,6 +117,7 @@ private fun App(dataDir: String) {
                 Screen.BENCH -> BenchScreen()
                 Screen.ROOM -> RoomScreen(dataDir, attested = false)
                 Screen.ATTEST -> RoomScreen(dataDir, attested = true)
+                Screen.REMOTE -> RemoteSessionScreen()
             }
             Spacer(Modifier.height(24.dp))
         }

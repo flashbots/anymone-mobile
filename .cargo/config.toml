@@ -1,0 +1,8 @@
+# cargo-ndk injects these too; keeping them here lets a plain
+# `cargo build --target aarch64-linux-android` work when the NDK's
+# toolchain bin directory is on PATH.
+[target.aarch64-linux-android]
+linker = "aarch64-linux-android29-clang"
+
+[target.x86_64-linux-android]
+linker = "x86_64-linux-android29-clang"

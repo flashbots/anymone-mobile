@@ -4,6 +4,8 @@ import SwiftUI
 @main
 struct AnymoneApp: App {
     @StateObject private var session = Session()
+    @StateObject private var remote = RemoteHostModel()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab = Tab.bench
 
     var body: some Scene {
@@ -18,6 +20,7 @@ struct AnymoneApp: App {
                             case .bench: BenchmarkView()
                             case .room: ConnectView()
                             case .attest: AttestView()
+                            case .remote: RemoteSessionView()
                             }
                         }
                         .padding(.horizontal, 20)
@@ -28,13 +31,17 @@ struct AnymoneApp: App {
                 }
             }
             .environmentObject(session)
+            .environmentObject(remote)
+            .onChange(of: scenePhase) { phase in
+                if phase == .background { Task { await remote.stop() } }
+            }
             .preferredColorScheme(.dark)
         }
     }
 }
 
 enum Tab: String, CaseIterable {
-    case bench, room, attest
+    case bench, room, attest, remote
 }
 
 private struct Brand: View {

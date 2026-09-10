@@ -28,6 +28,12 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Connect your computer to the protocol client running on this phone.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_anymone-remote._tcp</string>
+	</array>
 	<!-- The client carries the protocol's own crypto, so this is not exempt.
 	     Answer App Store Connect's export-compliance questions once; leaving
 	     the key out asks again on every upload. -->

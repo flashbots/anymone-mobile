@@ -130,7 +130,7 @@ dependencies = [
 [[package]]
 name = "anymone-core"
 version = "0.0.1"
-source = "git+ssh://git@github.com/flashbots/anymone?rev=d5b0300752bf7a35f896cc45e7686d51cd7a57d3#d5b0300752bf7a35f896cc45e7686d51cd7a57d3"
+source = "git+ssh://git@github.com/flashbots/anymone?rev=67874991d86f425c5badffd3ed98a5e017429717#67874991d86f425c5badffd3ed98a5e017429717"
 dependencies = [
  "adcnet",
  "async-trait",

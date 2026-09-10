@@ -4,12 +4,17 @@ Anymone clients on iOS and Android: mobile packaging, platform adapters, a
 SwiftUI app and an Android skeleton over the UniFFI bindings. The Rust FFI source
 lives in the adjacent `anymone` repository.
 
-Three screens, in the order they became useful:
+Four screens:
 
 1. **Bench** — times the client-side crypto on the device. No network, no accounts.
 2. **Room** — joins a broadcast tag over the client plane and exchanges messages.
 3. **Attest** — starts the client with App Attest / Play Integrity so it is
    admitted on `attested = true` subnets.
+4. **Remote** — hosts native protocol client actions for a paired desktop,
+   with developer keys, LAN pairing and Bonjour/NSD discovery. Keep the app
+   foregrounded; backgrounding stops the host. This screen invokes no store
+   attestation. Build against the current `anymone-ffi` source and follow the
+   `anymone-remote-session` crate's README for desktop and emulator tests.
 
 ## Layout
 
@@ -164,6 +169,32 @@ signed network policy, so pick them before relays are configured.
 
 ## Running against a dev network
 
-`deploy/local` in anymone binds to 127.0.0.1; regenerate the client config with
-the machine's LAN address, then paste it into the Room screen. The phone only
-needs outbound TCP — the client never listens.
+For the Remote screen, start the Rust demo from the `anymone` directory:
+
+```sh
+cargo run --locked -p anymone-observer -- demo --output target/demo --clients 0
+```
+
+Wait for `Demo ready`, then export the phone input in another terminal:
+
+```sh
+cargo run --locked -p anymone-remote-session -- export-config --bootstrap target/demo/client.toml --subnet 0 > host-config.json
+```
+
+Paste that JSON into Remote and start the developer host. Save its pairing JSON
+as `pairing.json` on the desktop, then run the separate service backend:
+
+```sh
+cargo run --locked -p anymone-chat -- --config target/demo/client.toml --remote-pairing pairing.json --max-clients 1 --port 8080
+```
+
+The demo runs ordinary Panetière, committee, relays and chat on the host. It has
+no pairing logic. The desktop backend connects to its loopback network and
+dispatches native protocol actions to the phone over TLS. Compare messages at
+ports 8080 and 7001. Use a fresh output directory and phone session per demo run.
+The `anymone-remote-session` README covers Android debug automation, ADB
+forwarding, discovery and standalone action tests.
+
+Room connects directly to a deployment and needs advertised relay addresses
+reachable from the phone. The loopback demo configuration is for desktop
+clients; it cannot be pasted into Room for a handset on another machine.
