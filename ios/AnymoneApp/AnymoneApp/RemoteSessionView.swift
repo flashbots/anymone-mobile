@@ -9,6 +9,7 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
     @Published var status = "stopped"
     @Published var participant = ""
     @Published var pairing = ""
+    @Published var pairingCode = ""
     @Published var running = false
     @Published var starting = false
     @Published var discovery = "not advertised"
@@ -53,6 +54,7 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
             guard generation == attempt else { await created.stop(); return }
             host = created
             pairing = try created.pairingJson()
+            pairingCode = try created.pairingCode()
             let data = Data(pairing.utf8)
             let info = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             guard let endpoint = info?["address"] as? String,
@@ -63,7 +65,7 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
                 name: "Anymone-" + String(UUID().uuidString.prefix(8)), port: port)
             advertised.delegate = self
             let version = (info?["interface_version"] as? NSNumber)?.stringValue ?? ""
-            advertised.setTXTRecord(NetService.data(fromTXTRecord: ["version": Data(version.utf8)]))
+            advertised.setTXTRecord(NetService.data(fromTXTRecord: ["version": Data(version.utf8), "pairing": Data("code".utf8)]))
             service = advertised
             discovery = "advertising"
             advertised.publish()
@@ -78,11 +80,15 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
                         guard generation == attempt else { return }
                         if let value = try JSONSerialization.jsonObject(with: Data(state.utf8)) as? [String: Any] {
                             if value["closed"] as? Bool == true { await stop(); return }
+                            let paired = value["paired"] as? Bool == true
+                            let attempts = (value["pairing_attempts_remaining"] as? NSNumber)?.intValue ?? 0
+                            if paired || attempts == 0 { pairingCode = "" }
                             let client = value["client"] as? [String: Any]
                             participant = client?["participant"] as? String ?? ""
                             let round = client?["current_round"] as? NSNumber ?? 0
                             let request = value["next_request"] as? NSNumber ?? 0
                             status = client == nil ? "\(endpoint) · waiting for desktop configuration" : "\(endpoint) · round \(round) · requests \(request)"
+                            if !paired && attempts == 0 { status = "Pairing attempts exhausted. Stop and start for a new code." }
                         }
                         try await Task.sleep(nanoseconds: 1_000_000_000)
                     } catch {
@@ -108,6 +114,7 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
         let previous = host
         host = nil
         pairing = ""
+        pairingCode = ""
         participant = ""
         running = false
         starting = false
@@ -151,10 +158,21 @@ struct RemoteSessionView: View {
             Text(remote.participant).font(.mono(10)).foregroundStyle(Ink.fog).textSelection(.enabled)
         }
         Text(remote.discovery).font(.mono(10)).foregroundStyle(Ink.fog)
+        if !remote.pairingCode.isEmpty {
+            Text("PAIRING CODE").font(.mono(10, .bold)).foregroundStyle(Ink.lichen)
+            Text("\(remote.pairingCode.prefix(4)) \(remote.pairingCode.suffix(4))")
+                .font(.mono(24, .bold)).foregroundStyle(Ink.moon)
+                .accessibilityLabel("Pairing code " + remote.pairingCode.map { String($0) }.joined(separator: " "))
+            Text("Select this phone on your computer and enter this code.")
+                .font(.mono(11)).foregroundStyle(Ink.fog)
+        }
         if !remote.pairing.isEmpty {
-            ShareLink("share pairing data", item: remote.pairing).buttonStyle(HouseButton())
-            Text("Pairing data grants control of this host. Share it with your computer.")
-                .font(.mono(10)).foregroundStyle(Ink.fog)
+            DisclosureGroup("Automation") {
+                ShareLink("share pairing data", item: remote.pairing).buttonStyle(HouseButton(outline: true))
+                Text("For automated test drivers. Pairing data grants control of this host.")
+                    .font(.mono(10)).foregroundStyle(Ink.fog)
+            }
+            .font(.mono(11)).foregroundStyle(Ink.fog)
         }
         Text("Developer mode uses software keys. Platform attestation is disabled.")
             .font(.mono(10)).foregroundStyle(Ink.lichen)

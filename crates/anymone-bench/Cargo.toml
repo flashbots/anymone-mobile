@@ -9,7 +9,7 @@ name = "anymone_bench"
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
-anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "e098700dc2dc2210728a81b491f84df314ca3f0c" }
+anymone-core = { git = "ssh://git@github.com/flashbots/anymone", rev = "327fa6f7c3ffc0988d90108cc44f1c077c957510" }
 libc = "0.2"
 once_cell = "1"
 panetiere = { git = "https://github.com/flashbots/panetiere", rev = "e994fd9a00d0f7f81d72a169b876bbc792690667" }

@@ -11,7 +11,7 @@ Four screens:
 3. **Attest** — starts the client with App Attest / Play Integrity so it is
    admitted on `attested = true` subnets.
 4. **Remote** — hosts native protocol client actions for a paired desktop,
-   with developer keys, LAN pairing and Bonjour/NSD discovery. Keep the app
+   with developer keys, code pairing and Bonjour/NSD discovery. Remote opens by default. Keep the app
    foregrounded; backgrounding stops the host. This screen invokes no store
    attestation. Build against the current `anymone-ffi` source and follow the
    `anymone-remote-session` crate's README for desktop and emulator tests.
@@ -176,12 +176,17 @@ cargo run --locked -p anymone-observer -- demo --output target/demo --clients 0
 ```
 
 Wait for `Demo ready`. On the phone's Remote screen, choose the LAN IPv4 address
-and start the developer host. Allow Local Network access on iOS. Save its shared
-pairing JSON as `pairing.json` on the desktop, then run:
+and start the developer host. Allow Local Network access on iOS. On the desktop, run:
 
 ```sh
-cargo run --locked -p anymone-chat -- --config target/demo/client.toml --remote-pairing pairing.json --max-clients 1 --port 8080
+cargo run --locked -p anymone-chat -- --config target/demo/client.toml --remote --max-clients 1 --port 8080
 ```
+
+Select the discovered phone and enter its eight-digit code in the terminal.
+No files need transferring. Use `--remote IP:PORT` when discovery is unavailable,
+including `--remote 127.0.0.1:9443` with ADB forwarding. Pairing JSON remains
+available under **Automation** for scripted tests. Rebuild both native bindings
+and the app to use code pairing.
 
 The demo runs ordinary Panetière, committee, relays and chat on the host. It has
 no pairing logic. The desktop backend connects to its loopback network and
