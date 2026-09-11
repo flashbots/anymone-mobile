@@ -93,8 +93,8 @@ func bundledConfig() -> String {
         let text = try? String(contentsOf: url)
     else {
         return """
-            # Copy from anymone's deploy/local/configs/client.toml, with the
-            # relay addresses rewritten to the dev machine's LAN IP.
+            # Run HOST=<LAN-IP> ./deploy/gen-configs.sh in anymone, then copy
+            # deploy/local/configs/client.toml here. The relays must be reachable.
             [network]
             stream_bootstrappers = ["ed25519:<hex>@192.168.1.10:7620"]
 

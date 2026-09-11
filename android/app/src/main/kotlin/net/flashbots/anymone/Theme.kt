@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Same palette and type as the iOS shell and the decks. */
 object Ink {
     val night = Color(0xFF080B09)
     val canopy = Color(0xFF112219)

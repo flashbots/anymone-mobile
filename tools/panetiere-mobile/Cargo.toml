@@ -1,12 +1,15 @@
 [package]
 name = "panetiere-mobile-tools"
-version = "0.1.0"
-edition = "2021"
+description = "Desktop drivers for the handset benchmark cell and the host-CSV merge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 publish = false
 
 [dependencies]
 anymone-bench = { path = "../../crates/anymone-bench" }
-panetiere = { git = "https://github.com/flashbots/panetiere", rev = "e994fd9a00d0f7f81d72a169b876bbc792690667" }
+panetiere = { workspace = true }
 
 [[bin]]
 name = "panetiere-mobile-bench"

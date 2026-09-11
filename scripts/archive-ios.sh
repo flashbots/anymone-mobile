@@ -2,12 +2,8 @@
 # Unsigned Release .xcarchive for the TestFlight lane, alongside the Release
 # entitlements whoever signs it has to re-apply.
 #
-# The Apple Distribution cert and App Store Connect key live in a separate repo,
-# so this CI cannot sign for distribution, and it cannot sign ad-hoc either — the
-# iOS device SDK rejects the '-' identity ("Ad Hoc code signing is not allowed").
 # An unsigned app carries no entitlements for -exportArchive to copy forward, so
-# the signing lane passes Release.entitlements to codesign explicitly. Losing that
-# file means losing App Attest with nothing in the build log to say so.
+# apply Release.entitlements explicitly when signing for distribution.
 set -euo pipefail
 
 cd "$(dirname "$0")/../ios/AnymoneApp"
@@ -37,7 +33,6 @@ xcodebuild archive \
 mkdir -p "$STAGE"
 cp -R build/AnymoneApp.xcarchive "$STAGE/"
 cp AnymoneApp/AnymoneApp.entitlements "$STAGE/Release.entitlements"
-# upload-artifact drops the executable bit, which would hand the signing lane an
-# app whose binary cannot launch, so ship a tarball.
+# Preserve executable permissions in the uploaded artifact.
 tar czf build/AnymoneApp.xcarchive.tar.gz -C "$STAGE" .
 echo "archived build $BUILD_NUMBER, unsigned"

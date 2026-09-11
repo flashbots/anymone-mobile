@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The deck's palette and type: night ground, lichen labels, moon values,
-/// ember counters, hairline rules, monospace everywhere.
 enum Ink {
     static let night = Color(hex: 0x080b09)
     static let canopy = Color(hex: 0x112219)
@@ -30,7 +28,6 @@ extension Font {
     }
 }
 
-/// `01 · BENCH` with the deck's leading rule.
 struct SectionLabel: View {
     let index: String
     let title: String
@@ -56,8 +53,6 @@ struct Hairline: View {
     var body: some View { Rectangle().fill(Ink.line).frame(height: 1) }
 }
 
-/// Key on the left in fog, value on the right in moon — the deck's annotation
-/// rhythm, which reads well for live protocol state.
 struct Row: View {
     let key: String
     let value: String
@@ -114,7 +109,6 @@ struct HouseField: View {
     }
 }
 
-/// Night ground plus the deck's two corner glows.
 struct Ground<Content: View>: View {
     @ViewBuilder var content: Content
 

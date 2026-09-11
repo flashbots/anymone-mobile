@@ -1,5 +1,6 @@
 /target
 /gen
+/build
 ios/AnymoneKit/*.xcframework
 ios/AnymoneKit/Sources/AnymoneKit/AnymoneKit.swift
 ios/AnymoneKit/Sources/AnymoneKitFFI/
@@ -13,3 +14,4 @@ android/*/build
 android/core/src/main/jniLibs
 android/local.properties
 .DS_Store
+*.swp
