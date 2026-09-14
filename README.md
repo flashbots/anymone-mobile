@@ -23,6 +23,10 @@ with `ANYMONE_DIR` or `ANYMONE_MANIFEST`. Keep its revision aligned with
 Requires JDK 17, Android SDK 35, Gradle 8.9, and an NDK selected by
 `ANDROID_NDK_HOME`.
 
+If you have Nix installed, run `nix develop` from the project root to open a
+development shell which supplies these dependencies. You can also skip
+`cargo install cargo-ndk` below.
+
 ```sh
 cargo install cargo-ndk --locked
 ./scripts/build-android.sh

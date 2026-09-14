@@ -1,6 +1,7 @@
 /target
 /gen
 /build
+/.direnv
 ios/AnymoneKit/*.xcframework
 ios/AnymoneKit/Sources/AnymoneKit/AnymoneKit.swift
 ios/AnymoneKit/Sources/AnymoneKitFFI/
@@ -12,6 +13,8 @@ android/.gradle
 android/build
 android/*/build
 android/core/src/main/jniLibs
+android/core/src/main/kotlin/net/flashbots/anymone/ffi/anymone_ffi.kt
+android/core/src/main/kotlin/net/flashbots/anymone/bench/anymone_bench.kt
 android/local.properties
 .DS_Store
 *.swp
