@@ -125,15 +125,18 @@ class RemoteClientSessionService : Service() {
         acquireWakeLock()
         scope.launch {
             try {
-                val created = RemoteProtocolHost.startDeveloper("$listenAddress:0")
+                val created = RemoteProtocolHost.startDeveloper("0.0.0.0:0")
                 if (attempt != generation) {
                     created.stop()
                     return@launch
                 }
                 host = created
-                pairing = created.pairingJson()
+                val pairingInfo = JSONObject(created.pairingJson())
+                val port = pairingInfo.getString("address").substringAfterLast(":")
+                endpoint = "$listenAddress:$port"
+                pairingInfo.put("address", endpoint)
+                pairing = pairingInfo.toString()
                 pairingCode = created.pairingCode()
-                endpoint = JSONObject(pairing).getString("address")
                 advertise(attempt)
                 running = true
                 starting = false
@@ -196,6 +199,7 @@ class RemoteClientSessionService : Service() {
             serviceType = "_anymone-remote._tcp."
             port = endpoint.substringAfterLast(":").toInt()
             setAttribute("pairing", "code")
+            setAttribute("address", endpoint.substringBeforeLast(":"))
         }
         val listener = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(service: NsdServiceInfo) {

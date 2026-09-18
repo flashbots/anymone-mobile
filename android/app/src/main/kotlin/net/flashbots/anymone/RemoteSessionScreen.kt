@@ -43,7 +43,9 @@ fun RemoteSessionScreen() {
     Text("STATE  ${remote.status}", style = mono(11), color = Ink.paper)
     Text("ACTIVITY  ${remote.activity}", style = mono(11), color = Ink.moon)
     remote.issue?.let { Text("ISSUE  $it", style = mono(11), color = Ink.ember) }
-    if (remote.endpoint.isNotEmpty()) Text(remote.endpoint, style = mono(10), color = Ink.fog)
+    if (remote.endpoint.isNotEmpty()) {
+        Text("DIRECT  --remote ${remote.endpoint}", style = mono(10), color = Ink.fog)
+    }
     if (remote.protocol.isNotEmpty()) {
         Text(
             "${remote.protocol} · round ${remote.currentRound} · ${remote.requestsProcessed} requests · ${remote.pendingMessages} pending",

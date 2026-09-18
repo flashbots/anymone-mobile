@@ -59,21 +59,28 @@ final class RemoteClientSessionModel: NSObject, ObservableObject, NetServiceDele
         issue = nil
         do {
             let created = try await RemoteProtocolHost.startDeveloper(
-                listenAddress: "\(address):0")
+                listenAddress: "0.0.0.0:0")
             guard generation == attempt else { await created.stop(); return }
             host = created
-            pairing = try created.pairingJson()
+            let rawPairing = try created.pairingJson()
             pairingCode = try created.pairingCode()
-            let data = Data(pairing.utf8)
-            let info = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            guard let endpoint = info?["address"] as? String,
-                  let port = endpoint.split(separator: ":").last.flatMap({ Int32($0) })
+            let data = Data(rawPairing.utf8)
+            guard var info = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let bound = info["address"] as? String,
+                  let port = bound.split(separator: ":").last.flatMap({ Int32($0) })
             else { throw RemoteScreenError.badPairing }
+            let endpoint = "\(address):\(port)"
+            info["address"] = endpoint
+            pairing = String(data: try JSONSerialization.data(withJSONObject: info), encoding: .utf8)
+                ?? { throw RemoteScreenError.badPairing }()
             let advertised = NetService(
                 domain: "local.", type: "_anymone-remote._tcp.",
                 name: "Anymone-" + String(UUID().uuidString.prefix(8)), port: port)
             advertised.delegate = self
-            advertised.setTXTRecord(NetService.data(fromTXTRecord: ["pairing": Data("code".utf8)]))
+            advertised.setTXTRecord(NetService.data(fromTXTRecord: [
+                "pairing": Data("code".utf8),
+                "address": Data(address.utf8),
+            ]))
             service = advertised
             discovery = "advertising"
             advertised.publish()
@@ -185,6 +192,12 @@ struct RemoteSessionView: View {
         Text("ACTIVITY  \(remote.activity)").font(.mono(11)).foregroundStyle(Ink.moon).textSelection(.enabled)
         if let issue = remote.issue {
             Text("ISSUE  \(issue)").font(.mono(11)).foregroundStyle(Ink.ember).textSelection(.enabled)
+        }
+        if !remote.pairing.isEmpty,
+           let data = remote.pairing.data(using: .utf8),
+           let info = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let endpoint = info["address"] as? String {
+            Text("DIRECT  --remote \(endpoint)").font(.mono(10)).foregroundStyle(Ink.fog).textSelection(.enabled)
         }
         if !remote.protocolName.isEmpty {
             Text("\(remote.protocolName) · round \(remote.currentRound ?? 0) · \(remote.requestsProcessed) requests · \(remote.pendingMessages ?? 0) pending")
