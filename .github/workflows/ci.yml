@@ -20,13 +20,13 @@ on:
       anymone_ref:
         description: anymone revision containing anymone-ffi
         type: string
-        default: 327fa6f7c3ffc0988d90108cc44f1c077c957510
+        default: b20ee1a28b05454a6a1bedb1c081304ba385d767
 
 env:
   CARGO_TERM_COLOR: always
   ANYMONE_DIR: ${{ github.workspace }}/anymone-source
   # Keep in step with the anymone-core rev pinned in Cargo.toml.
-  ANYMONE_REF: ${{ inputs.anymone_ref || '327fa6f7c3ffc0988d90108cc44f1c077c957510' }}
+  ANYMONE_REF: ${{ inputs.anymone_ref || 'b20ee1a28b05454a6a1bedb1c081304ba385d767' }}
 
 jobs:
   # Separate from the build jobs so a failing test is visible as a red job

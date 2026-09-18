@@ -1,6 +1,8 @@
 package net.flashbots.anymone
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -69,7 +71,6 @@ class MainActivity : ComponentActivity() {
     private fun handleRemoteIntent(intent: Intent) {
         if (DebugRemoteHost.start(this, intent)) {
             remoteLaunch += 1
-            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
@@ -79,14 +80,13 @@ class MainActivity : ComponentActivity() {
         handleRemoteIntent(intent)
     }
 
-    override fun onStop() {
-        RemoteHostController.stop()
-        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        super.onStop()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
         if (savedInstanceState == null) handleRemoteIntent(intent)
         setContent { AnymoneTheme { App(filesDir.path, remoteLaunch) } }
     }

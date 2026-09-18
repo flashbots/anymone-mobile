@@ -4,10 +4,17 @@ import SwiftUI
 import UIKit
 
 @MainActor
-final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
+final class RemoteClientSessionModel: NSObject, ObservableObject, NetServiceDelegate {
     @Published var address = ""
-    @Published var status = "stopped"
+    @Published var status = "Stopped"
+    @Published var activity = "Session is not running"
+    @Published var issue: String?
+    @Published var connected = false
     @Published var participant = ""
+    @Published var protocolName = ""
+    @Published var currentRound: UInt64?
+    @Published var requestsProcessed: UInt64 = 0
+    @Published var pendingMessages: UInt64?
     @Published var pairing = ""
     @Published var pairingCode = ""
     @Published var running = false
@@ -47,7 +54,9 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
         generation += 1
         let attempt = generation
         starting = true
-        status = "starting developer host"
+        status = "Starting"
+        activity = "Starting developer host"
+        issue = nil
         do {
             let created = try await RemoteProtocolHost.startDeveloper(
                 listenAddress: "\(address):0")
@@ -64,14 +73,14 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
                 domain: "local.", type: "_anymone-remote._tcp.",
                 name: "Anymone-" + String(UUID().uuidString.prefix(8)), port: port)
             advertised.delegate = self
-            let version = (info?["interface_version"] as? NSNumber)?.stringValue ?? ""
-            advertised.setTXTRecord(NetService.data(fromTXTRecord: ["version": Data(version.utf8), "pairing": Data("code".utf8)]))
+            advertised.setTXTRecord(NetService.data(fromTXTRecord: ["pairing": Data("code".utf8)]))
             service = advertised
             discovery = "advertising"
             advertised.publish()
             running = true
             starting = false
-            status = endpoint
+            status = "Waiting"
+            activity = "Waiting for desktop"
             UIApplication.shared.isIdleTimerDisabled = true
             poll = Task {
                 while !Task.isCancelled {
@@ -83,16 +92,25 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
                             let paired = value["paired"] as? Bool == true
                             let attempts = (value["pairing_attempts_remaining"] as? NSNumber)?.intValue ?? 0
                             if paired || attempts == 0 { pairingCode = "" }
+                            connected = value["connected"] as? Bool == true
+                            activity = value["last_activity"] as? String ?? activity
+                            if let error = value["last_error"] as? String { issue = error }
                             let client = value["client"] as? [String: Any]
                             participant = client?["participant"] as? String ?? ""
-                            let round = client?["current_round"] as? NSNumber ?? 0
-                            let request = value["next_request"] as? NSNumber ?? 0
-                            status = client == nil ? "\(endpoint) · waiting for desktop configuration" : "\(endpoint) · round \(round) · requests \(request)"
-                            if !paired && attempts == 0 { status = "Pairing attempts exhausted. Stop and start for a new code." }
+                            protocolName = client?["protocol"] as? String ?? ""
+                            currentRound = (client?["current_round"] as? NSNumber)?.uint64Value
+                            requestsProcessed = (value["next_request"] as? NSNumber)?.uint64Value ?? 0
+                            pendingMessages = (client?["pending_messages"] as? NSNumber)?.uint64Value
+                            status = connected ? "Connected" : paired ? "Disconnected" : "Waiting"
+                            if !paired && attempts == 0 { status = "Pairing locked" }
                         }
                         try await Task.sleep(nanoseconds: 1_000_000_000)
                     } catch {
-                        if !Task.isCancelled { status = "status failed: \(error)" }
+                        if !Task.isCancelled {
+                            status = "Failed"
+                            activity = "Could not read host status"
+                            issue = String(describing: error)
+                        }
                         return
                     }
                 }
@@ -100,7 +118,9 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
         } catch {
             guard generation == attempt else { return }
             await stop()
-            status = "failed: \(error)"
+            status = "Failed"
+            activity = "Developer host did not start"
+            issue = String(describing: error)
         }
     }
 
@@ -116,10 +136,17 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
         pairing = ""
         pairingCode = ""
         participant = ""
+        protocolName = ""
+        currentRound = nil
+        requestsProcessed = 0
+        pendingMessages = nil
+        connected = false
         running = false
         starting = false
         UIApplication.shared.isIdleTimerDisabled = false
-        status = "stopped"
+        status = "Stopped"
+        activity = "Session stopped"
+        issue = nil
         await previous?.stop()
     }
 
@@ -131,13 +158,14 @@ final class RemoteHostModel: NSObject, ObservableObject, NetServiceDelegate {
     func netService(_ sender: NetService, didNotPublish errorDict: [String: NSNumber]) {
         guard sender === service else { return }
         discovery = "discovery failed \(errorDict); use the IP address"
+        issue = discovery
     }
 }
 
 private enum RemoteScreenError: Error { case badPairing }
 
 struct RemoteSessionView: View {
-    @EnvironmentObject private var remote: RemoteHostModel
+    @EnvironmentObject private var remote: RemoteClientSessionModel
 
     var body: some View {
         SectionLabel(index: "01", title: "remote", trailing: "developer keys")
@@ -153,7 +181,15 @@ struct RemoteSessionView: View {
             Button("stop") { Task { await remote.stop() } }
                 .buttonStyle(HouseButton(outline: true))
         }
-        Text(remote.status).font(.mono(11)).foregroundStyle(Ink.paper).textSelection(.enabled)
+        Text("STATE  \(remote.status)").font(.mono(11)).foregroundStyle(Ink.paper).textSelection(.enabled)
+        Text("ACTIVITY  \(remote.activity)").font(.mono(11)).foregroundStyle(Ink.moon).textSelection(.enabled)
+        if let issue = remote.issue {
+            Text("ISSUE  \(issue)").font(.mono(11)).foregroundStyle(Ink.ember).textSelection(.enabled)
+        }
+        if !remote.protocolName.isEmpty {
+            Text("\(remote.protocolName) · round \(remote.currentRound ?? 0) · \(remote.requestsProcessed) requests · \(remote.pendingMessages ?? 0) pending")
+                .font(.mono(10)).foregroundStyle(Ink.fog).textSelection(.enabled)
+        }
         if !remote.participant.isEmpty {
             Text(remote.participant).font(.mono(10)).foregroundStyle(Ink.fog).textSelection(.enabled)
         }

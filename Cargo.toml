@@ -13,7 +13,7 @@ license = "MIT"
 repository = "https://github.com/flashbots/anymone-mobile"
 
 [workspace.dependencies]
-anymone-core = { git = "https://github.com/flashbots/anymone", rev = "327fa6f7c3ffc0988d90108cc44f1c077c957510" }
+anymone-core = { git = "https://github.com/flashbots/anymone", rev = "b20ee1a28b05454a6a1bedb1c081304ba385d767" }
 panetiere = { git = "https://github.com/flashbots/panetiere", rev = "e994fd9a00d0f7f81d72a169b876bbc792690667" }
 uniffi = "0.29"
 

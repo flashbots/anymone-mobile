@@ -4,7 +4,7 @@ import SwiftUI
 @main
 struct AnymoneApp: App {
     @StateObject private var session = Session()
-    @StateObject private var remote = RemoteHostModel()
+    @StateObject private var remote = RemoteClientSessionModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab = Tab.remote
 

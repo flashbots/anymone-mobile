@@ -52,9 +52,11 @@ entitlements, a distribution certificate and a provisioning profile.
 ## Connect
 
 Follow the [remote client guide](https://github.com/flashbots/anymone/blob/main/crates/anymone-remote-session/README.md)
-for a local demo, code pairing and ADB forwarding. Keep Remote foregrounded;
-restart and pair again after restarting the desktop. Remote uses developer
-keys without platform attestation.
+for a local demo, code pairing and ADB forwarding. On iOS, keep Remote
+foregrounded. Restart and pair again after restarting the desktop. On Android,
+Remote runs as a foreground service and reports its activity or latest issue in
+a notification, so locking the screen does not stop the session. Remote uses
+developer keys without platform attestation.
 
 Room needs a bootstrap configuration with relay addresses reachable from the
 phone. Desktop loopback addresses will not work.

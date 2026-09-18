@@ -7,42 +7,37 @@ import android.util.Log
 import org.json.JSONObject
 
 object DebugRemoteHost {
-    private var ownsHost = false
+    private var ownsSession = false
 
     fun start(context: Context, intent: Intent): Boolean {
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0 ||
             intent.action != "net.flashbots.anymone.START_REMOTE_DEVELOPER"
         ) return false
         val app = context.applicationContext
-        val remote = RemoteHostController
+        val remote = RemoteClientSessionService
         if (remote.running) {
-            if (ownsHost) report(app, "ready", pairing = remote.pairing)
+            if (ownsSession) report(app, "ready", pairing = remote.pairing)
             else report(app, "error", error = "stop the manually started host first")
             return true
         }
         if (remote.starting) {
-            if (!ownsHost) report(app, "error", error = "a manual host start is in progress")
+            if (!ownsSession) report(app, "error", error = "a manual session start is in progress")
             return true
         }
         report(app, "starting")
-        try {
-            remote.address = "127.0.0.1"
-            ownsHost = true
-            remote.start(
-                app,
-                onResult = { result ->
-                    result.fold(
-                        onSuccess = { report(app, "ready", pairing = it) },
-                        onFailure = { report(app, "error", error = it.message ?: it.toString()) },
-                    )
-                },
-                onStopped = { ownsHost = false; report(app, "stopped") },
-            )
-        } catch (error: Exception) {
-            ownsHost = false
-            report(app, "error", error = error.message ?: error.toString())
-        }
+        ownsSession = true
+        remote.start(app, "127.0.0.1")
         return true
+    }
+
+    internal fun ready(context: Context, pairing: String) {
+        if (ownsSession) report(context, "ready", pairing)
+    }
+
+    internal fun stopped(context: Context, error: String?) {
+        if (!ownsSession) return
+        ownsSession = false
+        report(context, if (error == null) "stopped" else "error", error = error)
     }
 
     private fun report(context: Context, state: String, pairing: String? = null, error: String? = null) {
@@ -54,7 +49,7 @@ object DebugRemoteHost {
                 it.write(result.toString())
             }
         } catch (failure: Exception) {
-            Log.e("RemoteHost", "Could not write debug host result", failure)
+            Log.e("RemoteClientSession", "Could not write debug session result", failure)
         }
     }
 }
