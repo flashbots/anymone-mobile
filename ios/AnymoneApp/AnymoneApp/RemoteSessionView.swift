@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 
 @MainActor
-final class RemoteClientSessionModel: NSObject, ObservableObject, NetServiceDelegate {
+final class RemoteClientSessionModel: NSObject, ObservableObject, @MainActor NetServiceDelegate {
     @Published var address = ""
     @Published var status = "Stopped"
     @Published var activity = "Session is not running"
@@ -71,8 +71,10 @@ final class RemoteClientSessionModel: NSObject, ObservableObject, NetServiceDele
             else { throw RemoteScreenError.badPairing }
             let endpoint = "\(address):\(port)"
             info["address"] = endpoint
-            pairing = String(data: try JSONSerialization.data(withJSONObject: info), encoding: .utf8)
-                ?? { throw RemoteScreenError.badPairing }()
+            let pairingData = try JSONSerialization.data(withJSONObject: info)
+            guard let pairingText = String(data: pairingData, encoding: .utf8)
+            else { throw RemoteScreenError.badPairing }
+            pairing = pairingText
             let advertised = NetService(
                 domain: "local.", type: "_anymone-remote._tcp.",
                 name: "Anymone-" + String(UUID().uuidString.prefix(8)), port: port)

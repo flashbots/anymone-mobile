@@ -115,11 +115,11 @@ jobs:
           cache-on-failure: true
       - name: XCFramework + bindings
         env:
-          TARGETS: ${{ inputs.archive && 'aarch64-apple-ios' || 'aarch64-apple-ios aarch64-apple-ios-sim' }}
+          TARGETS: ${{ (github.event_name != 'workflow_dispatch' || inputs.archive) && 'aarch64-apple-ios' || 'aarch64-apple-ios aarch64-apple-ios-sim' }}
         run: ./scripts/build-ios.sh
       - run: brew install xcodegen
       - name: Build the app for the simulator
-        if: ${{ !inputs.archive }}
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.archive }}
         working-directory: ios/AnymoneApp
         run: |
           xcodegen generate
@@ -131,12 +131,12 @@ jobs:
 
       # The artifact includes an unsigned archive and Release entitlements.
       - name: Release archive
-        if: inputs.archive
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.archive }}
         env:
           BUILD_NUMBER: ${{ github.run_number }}
         run: ./scripts/archive-ios.sh
       - uses: actions/upload-artifact@v4
-        if: inputs.archive
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.archive }}
         with:
           name: AnymoneApp.xcarchive.tar.gz
           path: ios/AnymoneApp/build/AnymoneApp.xcarchive.tar.gz
